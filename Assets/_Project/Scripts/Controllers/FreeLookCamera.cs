@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class WheelchairFreeLookCamera : MonoBehaviour
+public class FreeLookCamera : MonoBehaviour
 {
     [Header("=== Configurações do Olhar ===")]
     [Tooltip("Sensibilidade do rato")]

@@ -80,7 +80,7 @@ public class WheelchairWheelController : MonoBehaviour
     }
 
     // Referências internas
-    private WheelchairRealisticMovement movementScript;
+    private WheelchairMovement movementScript;
     private Rigidbody rb;
 
     // Rotações iniciais para reset
@@ -100,7 +100,7 @@ public class WheelchairWheelController : MonoBehaviour
     void Start()
     {
         // Obter componentes
-        movementScript = GetComponent<WheelchairRealisticMovement>();
+        movementScript = GetComponent<WheelchairMovement>();
         rb = GetComponent<Rigidbody>();
         posicaoAnterior = transform.position;
 

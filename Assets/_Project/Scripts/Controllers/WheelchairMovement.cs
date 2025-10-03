@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-public class WheelchairRealisticMovement : MonoBehaviour
+public class WheelchairMovement : MonoBehaviour
 {
     [Header("=== Configurações de Velocidade ===")]
     [Tooltip("Velocidade máxima em modo normal (km/h)")]
