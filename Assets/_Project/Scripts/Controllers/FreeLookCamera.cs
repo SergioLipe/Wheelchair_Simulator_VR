@@ -10,7 +10,7 @@ public class FreeLookCamera : MonoBehaviour
     public float limiteVertical = 80f;
     
     [Tooltip("Limite de olhar para esquerda/direita (graus)")]
-    public float limiteHorizontal = 90f;  // Simula o limite de virar a cabeça
+    public float limiteHorizontal = 90f;  
     
     [Header("=== Suavização ===")]
     [Tooltip("Suavizar movimento da câmara")]
@@ -30,7 +30,7 @@ public class FreeLookCamera : MonoBehaviour
     {
         // Bloquear cursor no centro da tela
         Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        Cursor.visible = false;  //esconde o cursor
         
         // Guardar rotação inicial
         rotacaoAlvo = transform.localRotation;
@@ -73,11 +73,6 @@ public class FreeLookCamera : MonoBehaviour
             transform.localRotation = rotacaoAlvo;
         }
         
-        // TAB para mostrar/esconder cursor (útil para aceder a menus)
-        if (Input.GetKeyDown(KeyCode.Tab))
-        {
-            AlternarCursor();
-        }
         
         // Tecla C para centrar a vista
         if (Input.GetKeyDown(KeyCode.C))
@@ -86,31 +81,8 @@ public class FreeLookCamera : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// Alterna entre cursor bloqueado/desbloqueado
-    /// Útil para aceder a menus ou interface
-    /// </summary>
-    void AlternarCursor()
-    {
-        if (Cursor.lockState == CursorLockMode.Locked)
-        {
-            // Desbloquear cursor e torná-lo visível
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
-        else
-        {
-            // Bloquear cursor e escondê-lo
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-        }
-    }
-    
-    /// <summary>
-    /// Centra a vista na posição frontal
-    /// Simula voltar a olhar em frente
-    /// </summary>
-    void CentrarVista()
+
+    void CentrarVista() // Centra a vista na posição frontal
     {
         // Reset das rotações para zero
         rotacaoX = 0f;

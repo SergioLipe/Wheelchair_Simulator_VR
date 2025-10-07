@@ -54,7 +54,7 @@ public class DummyPositioner : MonoBehaviour
         AplicarPose();
     }
     
-    void EncontrarBones()
+    void EncontrarBones()      // Procurar os ossos
     {
         Transform[] todos = GetComponentsInChildren<Transform>();
         
@@ -62,25 +62,25 @@ public class DummyPositioner : MonoBehaviour
         {
             string nome = t.name;
             
-            // Coluna
+            // === Coluna === 
             if (nome.Contains("Hips")) hips = t;
             else if (nome == "mixamorig:Spine") spine = t;
             else if (nome == "mixamorig:Spine1") spine1 = t;
             else if (nome == "mixamorig:Spine2") spine2 = t;
             
-            // Pernas (mantidas como estavam no teu script original)
+            // === Pernas === 
             else if (nome == "mixamorig:LeftUpLeg") leftUpLeg = t;
             else if (nome == "mixamorig:LeftLeg") leftLeg = t;
             else if (nome == "mixamorig:RightUpLeg") rightUpLeg = t;
             else if (nome == "mixamorig:RightLeg") rightLeg = t;
             
-            // Braços
+            // === Braços === 
             else if (nome == "mixamorig:LeftArm") leftArm = t;
             else if (nome == "mixamorig:LeftForeArm") leftForeArm = t;
             else if (nome == "mixamorig:RightArm") rightArm = t;
             else if (nome == "mixamorig:RightForeArm") rightForeArm = t;
 
-            // Pulsos
+            // ===  Pulsos ===  
             else if (nome == "mixamorig:LeftHand") leftHand = t;
             else if (nome == "mixamorig:RightHand") rightHand = t;
         }
@@ -88,7 +88,7 @@ public class DummyPositioner : MonoBehaviour
     
     void AplicarPose()
     {
-        // Inclinação das costas
+        // ===  Inclinação das costas ===  
         if (spine != null) spine.localRotation = Quaternion.Euler(inclinacaoCostas, 0, 0);
         if (spine1 != null) spine1.localRotation = Quaternion.Euler(inclinacaoCostas * 0.5f, 0, 0);
         if (spine2 != null) spine2.localRotation = Quaternion.Euler(inclinacaoCostas * 0.3f, 0, 0);
@@ -146,9 +146,9 @@ public class DummyPositioner : MonoBehaviour
             rightHand.localRotation = Quaternion.Euler(dobrarPulsos, 0, -rodarPulsos);
     }
     
-    void OnValidate()
+    void OnValidate()     // Quando algo muda
     {
-        if (spine == null || leftArm == null) EncontrarBones();
+        if (spine == null || leftArm == null) EncontrarBones();      // Verifica se já encontrou os ossos
         AplicarPose();
     }
 }
