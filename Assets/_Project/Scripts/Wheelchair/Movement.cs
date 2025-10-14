@@ -179,6 +179,9 @@ public class Movement : MonoBehaviour
         else
         {
             PararDeEmergencia();
+            // CRÍTICO: Mesmo com travão ativo, aplicar gravidade ao CharacterController
+            // para evitar bugs de física (cair através do mapa)
+            AplicarMovimentoVertical();
         }
 
         // Aplicar sempre a gravidade
@@ -440,6 +443,16 @@ public class Movement : MonoBehaviour
 
         // Aplicar movimento
         controller.Move(direcaoMovimento * Time.deltaTime);
+    }
+
+    // NOVO MÉTODO: Aplica apenas movimento vertical (gravidade) quando travão está ativo
+    void AplicarMovimentoVertical()
+    {
+        // Criar vetor de movimento só com componente Y (gravidade)
+        Vector3 movimentoVertical = new Vector3(0, movimentoVelocidade.y, 0);
+        
+        // Aplicar ao CharacterController para manter a física correta
+        controller.Move(movimentoVertical * Time.deltaTime);
     }
 
     bool PodeMoverPara(Vector3 posicao)
