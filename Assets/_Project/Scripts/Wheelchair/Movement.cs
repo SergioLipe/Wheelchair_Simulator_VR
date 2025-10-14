@@ -48,9 +48,12 @@ public class Movement : MonoBehaviour
     [Tooltip("Distância para deteção de obstáculos")]
     public float distanciaAviso = 1.5f;
 
-    [Tooltip("Força de resistência ao bater (não usado - controlo total do utilizador)")]
-    [Range(0f, 1f)]
-    public float resistenciaColisao = 0.8f;
+    [Tooltip("Distância REAL para bloqueio (metros) - quão perto pode chegar")]
+    [Range(0.01f, 0.2f)]
+    public float distanciaBloqueio = 0.05f;  // 5cm do objeto - MUITO próximo!
+
+    [Tooltip("Mostrar raios de debug na Scene View")]
+    public bool mostrarDebugRaios = true;
 
     [Header("=== Estado Atual (Debug) ===")]
     [SerializeField] private float velocidadeAtual = 0f;
@@ -62,7 +65,7 @@ public class Movement : MonoBehaviour
     [SerializeField] private float distanciaObstaculo = 999f;
     [SerializeField] private bool bloqueadoFrente = false;
     [SerializeField] private bool bloqueadoTras = false;
-    [SerializeField] private float eficienciaRotacao = 100f; // Percentagem de rotação baseada na velocidade
+    [SerializeField] private float eficienciaRotacao = 100f;
 
     // Componentes
     private CharacterController controller;
@@ -83,7 +86,7 @@ public class Movement : MonoBehaviour
     // Sistema de bloqueio direcional
     private Vector3 direcaoBloqueada = Vector3.zero;
     private float tempoBloqueio = 0f;
-    private const float duracaoBloqueio = 0.2f; // Bloqueia por 0.2 segundos após colisão (mais curto)
+    private const float duracaoBloqueio = 0.2f;
 
     // Sistema de deslizamento em paredes
     private bool deslizaParede = false;
@@ -95,31 +98,32 @@ public class Movement : MonoBehaviour
 
     public enum ModosVelocidade
     {
-        Lento,      // Para interiores
-        Normal,     // Uso geral
-        Desligado   // Travão de emergência
+        Lento,
+        Normal,
+        Desligado
     }
 
     void Start()
     {
-        // Configurar o CharacterController com valores MÍNIMOS
+        // Configurar o CharacterController com valores OTIMIZADOS
         controller = GetComponent<CharacterController>();
         if (controller == null)
         {
             controller = gameObject.AddComponent<CharacterController>();
         }
 
-        // Valores ajustados para scale 1x1x1
+        // === VALORES OTIMIZADOS PARA COLISÃO PRECISA ===
+        // Assumindo que a cadeira tem ~60cm de largura (escala 1x1x1)
         controller.height = 1.4f;
-        controller.radius = 0.35f;
+        controller.radius = 0.25f;  // REDUZIDO de 0.35f para 0.25f (25cm = mais preciso)
         controller.center = new Vector3(0, 0.7f, 0);
 
-        // CRÍTICO: Skin Width deve ser maior que zero mas pequeno
-        controller.skinWidth = 0.01f;  // Valor menor para permitir chegar mais perto
-        controller.minMoveDistance = 0.001f;
+        // SkinWidth MÍNIMO possível
+        controller.skinWidth = 0.005f;  // REDUZIDO de 0.01f para 0.005f
+        controller.minMoveDistance = 0.0001f;  // Ainda mais sensível
         controller.stepOffset = 0.1f;
 
-        // Elevar um pouco no início para não ficar preso no chão
+        // Elevar um pouco no início
         transform.position += Vector3.up * 0.1f;
 
         // Obter referência ao wheel controller
@@ -130,9 +134,9 @@ public class Movement : MonoBehaviour
         velocidadeMaximaLenta = velocidadeMaximaLenta / 3.6f;
         velocidadeMarchaAtras = velocidadeMarchaAtras / 3.6f;
 
-        Debug.Log("✅ WheelchairMovement - Sistema de Colisão Realista ativo!");
-        Debug.Log("📌 Direção Traseira = comportamento tipo carro (só roda em movimento)");
-        Debug.Log("📌 Direção Frontal = pode rodar parado se configurado");
+        Debug.Log("✅ WheelchairMovement - Colisões PRECISAS ativas!");
+        Debug.Log($"📏 Radius: {controller.radius}m | SkinWidth: {controller.skinWidth}m");
+        Debug.Log($"📏 Distância de bloqueio: {distanciaBloqueio}m ({distanciaBloqueio * 100}cm)");
     }
 
     void Update()
@@ -180,7 +184,6 @@ public class Movement : MonoBehaviour
         {
             PararDeEmergencia();
             // CRÍTICO: Mesmo com travão ativo, aplicar gravidade ao CharacterController
-            // para evitar bugs de física (cair através do mapa)
             AplicarMovimentoVertical();
         }
 
@@ -198,7 +201,7 @@ public class Movement : MonoBehaviour
 
     void GerirModos()
     {
-        // Tecla 1: Modo Lento (interior/pessoas)
+        // Tecla 1: Modo Lento
         if (Input.GetKeyDown(KeyCode.Alpha1))
         {
             modoAtual = ModosVelocidade.Lento;
@@ -228,10 +231,10 @@ public class Movement : MonoBehaviour
     void ProcessarInputRealista()
     {
         // Obter input do jogador
-        float inputVertical = Input.GetAxis("Vertical");    // W/S ou Setas
-        float inputHorizontal = Input.GetAxis("Horizontal"); // A/D ou Setas
+        float inputVertical = Input.GetAxis("Vertical");
+        float inputHorizontal = Input.GetAxis("Horizontal");
 
-        // Suavizar o input (simula o joystick analógico da cadeira)
+        // Suavizar o input
         float suavizacao = 3f;
         inputVerticalSuavizado = Mathf.Lerp(inputVerticalSuavizado, inputVertical, suavizacao * Time.deltaTime);
         inputHorizontalSuavizado = Mathf.Lerp(inputHorizontalSuavizado, inputHorizontal, suavizacao * Time.deltaTime);
@@ -245,41 +248,34 @@ public class Movement : MonoBehaviour
         // Se está bloqueado à frente, NÃO permite movimento frontal
         if (bloqueadoFrente && inputVerticalSuavizado > 0)
         {
-            inputVerticalSuavizado = 0; // Bloqueia completamente movimento frontal
+            inputVerticalSuavizado = 0;
             velocidadeDesejada = 0;
 
-            // Só mostra feedback se jogador insiste em ir para frente
-            if (inputVertical > 0.5f) // Se jogador insiste em ir para frente
+            if (inputVertical > 0.5f)
             {
-                // Adicionar pequeno recuo para mostrar resistência
-                velocidadeAtual = Mathf.Max(velocidadeAtual - 0.5f * Time.deltaTime, -0.05f);  // Recuo mais sutil
+                velocidadeAtual = Mathf.Max(velocidadeAtual - 0.5f * Time.deltaTime, -0.05f);
                 Debug.Log("⚠️ Bloqueado à frente - impossível avançar!");
             }
         }
         // Se está bloqueado atrás, NÃO permite marcha-atrás
         else if (bloqueadoTras && inputVerticalSuavizado < 0)
         {
-            inputVerticalSuavizado = 0; // Bloqueia marcha-atrás
+            inputVerticalSuavizado = 0;
             velocidadeDesejada = 0;
         }
         // Movimento normal quando não bloqueado
         else
         {
-            // Marcha-atrás é sempre mais lenta
             if (inputVerticalSuavizado < 0)
             {
                 velocidadeMaxima = velocidadeMarchaAtras;
             }
 
-            // Calcular velocidade desejada - CONTROLO TOTAL DO UTILIZADOR
             velocidadeDesejada = inputVerticalSuavizado * velocidadeMaxima;
-
-            // NÃO reduzir velocidade automaticamente - o utilizador controla tudo
         }
 
         // === ACELERAÇÃO E DESACELERAÇÃO ===
 
-        // Acelerar apenas se não está bloqueado
         if (!bloqueadoFrente && !bloqueadoTras && Mathf.Abs(velocidadeDesejada) > Mathf.Abs(velocidadeAtual))
         {
             float aceleracao = velocidadeMaxima / tempoAceleracao;
@@ -287,27 +283,24 @@ public class Movement : MonoBehaviour
         }
         else
         {
-            // Desacelerar/Travar
             float desaceleracao = velocidadeMaxima / tempoTravagem;
 
-            // Travagem imediata se está bloqueado
             if (bloqueadoFrente || bloqueadoTras)
             {
-                velocidadeAtual = 0; // Para instantaneamente se bloqueado
+                velocidadeAtual = 0;
             }
             else if (emColisao)
             {
-                desaceleracao *= 2f; // Trava 2x mais rápido em colisão
+                desaceleracao *= 2f;
                 velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeDesejada, desaceleracao * Time.deltaTime);
             }
             else
             {
-                // Desaceleração normal quando o utilizador solta os controlos
                 velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeDesejada, desaceleracao * Time.deltaTime);
             }
         }
 
-        // Rotação - sempre permitida mesmo quando bloqueado
+        // Rotação
         ProcessarRotacao(inputHorizontalSuavizado);
     }
 
@@ -315,61 +308,46 @@ public class Movement : MonoBehaviour
     {
         float multiplicadorRotacao = 1f;
         bool isDirecaoTraseira = false;
-        eficienciaRotacao = 100f; // Reset
+        eficienciaRotacao = 100f;
 
-        // Se o wheelController existir, verificar tipo de direção
         if (wheelController != null)
         {
             isDirecaoTraseira = wheelController.GetTipoDirecao() == WheelController.TipoDirecao.DirecaoTraseira;
 
             if (isDirecaoTraseira)
             {
-                multiplicadorRotacao = 1.3f;  // 30% mais ágil quando em movimento
+                multiplicadorRotacao = 1.3f;
             }
         }
 
         bool estaParado = Mathf.Abs(velocidadeAtual) < 0.1f;
 
-        // === COMPORTAMENTO REALISTA DA DIREÇÃO TRASEIRA ===
         if (isDirecaoTraseira)
         {
-            // Direção traseira: SÓ roda quando está em movimento!
             if (estaParado)
             {
-                eficienciaRotacao = 0f; // Sem rotação quando parado
+                eficienciaRotacao = 0f;
 
-                // Feedback visual quando tenta virar parado
                 if (Mathf.Abs(inputHorizontal) > 0.1f)
                 {
                     tentandoVirarParado = true;
-                    tempoTentandoVirar = 1f; // Mostra aviso por 1 segundo
-
-                    // Debug mais informativo
+                    tempoTentandoVirar = 1f;
                     Debug.Log("⚠️ Direção Traseira: Use W/S + A/D para virar (como um carro)");
                 }
 
-                // NÃO permite rodar parado com direção traseira (realista)
-                return; // NÃO roda a cadeira quando parado
+                return;
             }
             else
             {
-                tentandoVirarParado = false; // Limpa o aviso quando em movimento
-
-                // Em movimento: rotação proporcional à velocidade (como um carro)
+                tentandoVirarParado = false;
                 float velocidadeNormalizada = Mathf.Abs(velocidadeAtual) / velocidadeMaximaNormal;
-
-                // Quanto mais devagar, menos vira (realista)
-                // Em velocidade máxima = 100% rotação
-                // Em velocidade mínima = 20% rotação
                 float eficienciaBase = Mathf.Lerp(0.2f, 1f, velocidadeNormalizada);
                 multiplicadorRotacao *= eficienciaBase;
 
-                // Marcha-atrás: direção invertida (como um carro real)
-                // Quando vai para trás e vira à direita, a frente vai para a esquerda
                 if (velocidadeAtual < 0)
                 {
-                    multiplicadorRotacao *= -0.8f; // Inverte e reduz a 80% (marcha-atrás é mais lenta)
-                    eficienciaRotacao = eficienciaBase * 80f; // 80% eficiência em marcha-atrás
+                    multiplicadorRotacao *= -0.8f;
+                    eficienciaRotacao = eficienciaBase * 80f;
                 }
                 else
                 {
@@ -377,32 +355,28 @@ public class Movement : MonoBehaviour
                 }
             }
         }
-        // === COMPORTAMENTO DA DIREÇÃO FRONTAL ===
         else
         {
-            tentandoVirarParado = false; // Não aplica para direção frontal
+            tentandoVirarParado = false;
 
-            // Direção frontal: comportamento original
             if (estaParado && !rotacaoNoLugar)
             {
                 eficienciaRotacao = 0f;
-                return; // Não roda se está parado e não pode rodar no lugar
+                return;
             }
             else if (estaParado && rotacaoNoLugar)
             {
-                multiplicadorRotacao *= 1.5f; // Rotação mais rápida quando parado (frontal pode fazer isto)
-                eficienciaRotacao = 100f; // 100% eficiência quando pode rodar parado
+                multiplicadorRotacao *= 1.5f;
+                eficienciaRotacao = 100f;
             }
             else
             {
-                // Em movimento: rotação normal
                 float velocidadeNormalizada = Mathf.Abs(velocidadeAtual) / velocidadeMaximaNormal;
                 multiplicadorRotacao *= (1f + velocidadeNormalizada * 0.2f);
-                eficienciaRotacao = 100f; // Direção frontal sempre 100% eficiente
+                eficienciaRotacao = 100f;
             }
         }
 
-        // Aplicar rotação
         float rotacao = inputHorizontal * velocidadeRotacao * multiplicadorRotacao * Time.deltaTime;
         transform.Rotate(0, rotacao, 0);
     }
@@ -411,28 +385,24 @@ public class Movement : MonoBehaviour
     {
         Vector3 direcaoMovimento = Vector3.zero;
 
-        // Se está deslizando numa parede, usar direção de deslize
         if (deslizaParede && direcaoDeslize != Vector3.zero)
         {
-            direcaoMovimento = direcaoDeslize * Mathf.Abs(velocidadeAtual) * 0.5f; // Desliza a 50% da velocidade
+            direcaoMovimento = direcaoDeslize * Mathf.Abs(velocidadeAtual) * 0.5f;
         }
         else
         {
-            // Movimento normal
             direcaoMovimento = transform.forward * velocidadeAtual;
         }
 
-        // Aplicar gravidade
         direcaoMovimento.y = movimentoVelocidade.y;
 
-        // === VERIFICAÇÃO PRÉVIA DE COLISÃO ===
-        // Verifica se vai colidir ANTES de mover
+        // === VERIFICAÇÃO PRÉVIA DE COLISÃO MELHORADA ===
         if (velocidadeAtual != 0)
         {
-            Vector3 proximaPosicao = transform.position + direcaoMovimento.normalized * 0.05f; // Reduzido de 0.1f
+            // Usar distância muito pequena para verificação
+            Vector3 proximaPosicao = transform.position + direcaoMovimento.normalized * 0.02f;
             if (!PodeMoverPara(proximaPosicao))
             {
-                // Bloqueia movimento se vai colidir
                 if (velocidadeAtual > 0) bloqueadoFrente = true;
                 if (velocidadeAtual < 0) bloqueadoTras = true;
                 tempoBloqueio = duracaoBloqueio;
@@ -441,29 +411,23 @@ public class Movement : MonoBehaviour
             }
         }
 
-        // Aplicar movimento
         controller.Move(direcaoMovimento * Time.deltaTime);
     }
 
-    // NOVO MÉTODO: Aplica apenas movimento vertical (gravidade) quando travão está ativo
     void AplicarMovimentoVertical()
     {
-        // Criar vetor de movimento só com componente Y (gravidade)
         Vector3 movimentoVertical = new Vector3(0, movimentoVelocidade.y, 0);
-        
-        // Aplicar ao CharacterController para manter a física correta
         controller.Move(movimentoVertical * Time.deltaTime);
     }
 
     bool PodeMoverPara(Vector3 posicao)
     {
-        // Verificar se a posição está livre usando raycasts
         Vector3 origem = transform.position + Vector3.up * 0.5f;
         Vector3 direcao = (posicao - transform.position).normalized;
         float distancia = Vector3.Distance(transform.position, posicao);
 
         RaycastHit hit;
-        if (Physics.Raycast(origem, direcao, out hit, distancia + 0.05f)) // Reduzido de 0.2f para 0.05f
+        if (Physics.Raycast(origem, direcao, out hit, distancia + 0.02f))
         {
             // Ignorar chão
             if (hit.collider.name.ToLower().Contains("plane") ||
@@ -480,80 +444,108 @@ public class Movement : MonoBehaviour
 
     void VerificarObstaculosCompleto()
     {
-        Vector3 origem = transform.position + Vector3.up * 0.5f;
+        // === ORIGEM DOS RAIOS AJUSTADA ===
+        // Partir da borda do controller, não do centro!
+        Vector3 centroController = transform.position + Vector3.up * 0.7f;
+        
         avisoProximidade = false;
         bloqueadoFrente = false;
         bloqueadoTras = false;
         float menorDist = 999f;
         string objetoMaisProximo = "";
 
-        // Verificar frente com múltiplos raios (mais preciso)
-        for (float offsetX = -0.3f; offsetX <= 0.3f; offsetX += 0.15f)
+        // === VERIFICAÇÃO FRONTAL MELHORADA ===
+        // Múltiplos raios começando NA BORDA do controller
+        for (float offsetX = -0.2f; offsetX <= 0.2f; offsetX += 0.1f)
         {
-            Vector3 origemRaio = origem + transform.right * offsetX;
-            RaycastHit hit;
-
-            // Raio frontal - distância de verificação maior para avisos
-            if (Physics.Raycast(origemRaio, transform.forward, out hit, distanciaAviso))
+            for (float offsetY = 0.2f; offsetY <= 1.0f; offsetY += 0.4f)
             {
-                // Ignorar chão
-                string nomeObjeto = hit.collider.name.ToLower();
-                if (nomeObjeto.Contains("plane") || nomeObjeto.Contains("ground") || nomeObjeto.Contains("floor"))
-                    continue;
+                // Ponto de origem NA BORDA do cilindro do controller
+                Vector3 origemLocal = centroController + transform.right * offsetX;
+                origemLocal.y = transform.position.y + offsetY;
+                
+                // Adicionar o radius para começar na borda
+                Vector3 origemRaio = origemLocal + transform.forward * controller.radius;
+                
+                RaycastHit hit;
 
-                float dist = hit.distance;
-
-                // BLOQUEIO FRONTAL só quando REALMENTE próximo (quase a tocar)
-                if (dist < 0.12f)  // Ainda mais próximo - permite quase encostar
+                // Raio frontal - distância ajustada
+                if (Physics.Raycast(origemRaio, transform.forward, out hit, distanciaAviso))
                 {
-                    bloqueadoFrente = true;
-                    tempoBloqueio = duracaoBloqueio;
-                    normalColisao = hit.normal;
+                    string nomeObjeto = hit.collider.name.ToLower();
+                    if (nomeObjeto.Contains("plane") || nomeObjeto.Contains("ground") || nomeObjeto.Contains("floor"))
+                        continue;
 
-                    // Calcular direção de deslize ao longo da parede
-                    Vector3 projecao = Vector3.Project(transform.forward, hit.normal);
-                    direcaoDeslize = (transform.forward - projecao).normalized;
-                    deslizaParede = true;
+                    float dist = hit.distance;
+
+                    // BLOQUEIO quando realmente próximo
+                    if (dist < distanciaBloqueio)
+                    {
+                        bloqueadoFrente = true;
+                        tempoBloqueio = duracaoBloqueio;
+                        normalColisao = hit.normal;
+
+                        Vector3 projecao = Vector3.Project(transform.forward, hit.normal);
+                        direcaoDeslize = (transform.forward - projecao).normalized;
+                        deslizaParede = true;
+                    }
+
+                    if (dist < menorDist)
+                    {
+                        menorDist = dist;
+                        objetoMaisProximo = hit.collider.name;
+                        avisoProximidade = true;
+                    }
+
+                    // Debug visual melhorado
+                    if (mostrarDebugRaios)
+                    {
+                        Color corRaio = dist < distanciaBloqueio ? Color.red : 
+                                       (dist < 0.3f ? Color.yellow : Color.green);
+                        Debug.DrawRay(origemRaio, transform.forward * hit.distance, corRaio);
+                    }
+                }
+                else if (mostrarDebugRaios)
+                {
+                    // Mostrar raio mesmo sem hit
+                    Debug.DrawRay(origemRaio, transform.forward * 0.5f, Color.gray);
                 }
 
-                if (dist < menorDist)
+                // === VERIFICAÇÃO TRASEIRA ===
+                Vector3 origemRaioTras = origemLocal - transform.forward * controller.radius;
+                
+                if (Physics.Raycast(origemRaioTras, -transform.forward, out hit, distanciaAviso * 0.5f))
                 {
-                    menorDist = dist;
-                    objetoMaisProximo = hit.collider.name;
-                    avisoProximidade = true;
+                    string nomeObjeto = hit.collider.name.ToLower();
+                    if (nomeObjeto.Contains("plane") || nomeObjeto.Contains("ground") || nomeObjeto.Contains("floor"))
+                        continue;
+
+                    if (hit.distance < distanciaBloqueio)
+                    {
+                        bloqueadoTras = true;
+                        tempoBloqueio = duracaoBloqueio;
+                    }
+
+                    if (mostrarDebugRaios)
+                    {
+                        Color corRaio = hit.distance < distanciaBloqueio ? Color.red : Color.magenta;
+                        Debug.DrawRay(origemRaioTras, -transform.forward * hit.distance, corRaio);
+                    }
                 }
-
-                // Debug visual - cores ajustadas para novas distâncias
-                Color corRaio = dist < 0.12f ? Color.red : (dist < 0.3f ? Color.yellow : Color.green);
-                Debug.DrawRay(origemRaio, transform.forward * hit.distance, corRaio);
-            }
-
-            // Raio traseiro - distância menor
-            if (Physics.Raycast(origemRaio, -transform.forward, out hit, distanciaAviso * 0.3f))
-            {
-                string nomeObjeto = hit.collider.name.ToLower();
-                if (nomeObjeto.Contains("plane") || nomeObjeto.Contains("ground") || nomeObjeto.Contains("floor"))
-                    continue;
-
-                if (hit.distance < 0.12f)  // Consistente com a frente
-                {
-                    bloqueadoTras = true;
-                    tempoBloqueio = duracaoBloqueio;
-                }
-
-                Debug.DrawRay(origemRaio, -transform.forward * hit.distance, Color.magenta);
             }
         }
 
-        // Verificar laterais (para avisos)
+        // === VERIFICAÇÃO LATERAL (360°) ===
         for (float angulo = -90f; angulo <= 90f; angulo += 30f)
         {
-            if (angulo == 0) continue; // Já verificado acima
+            if (angulo == 0) continue;
 
             Vector3 dir = Quaternion.Euler(0, angulo, 0) * transform.forward;
+            Vector3 origemLateral = centroController + dir * controller.radius;
+            
             RaycastHit hit;
 
-            if (Physics.Raycast(origem, dir, out hit, distanciaAviso * 0.7f))
+            if (Physics.Raycast(origemLateral, dir, out hit, distanciaAviso * 0.7f))
             {
                 string nomeObjeto = hit.collider.name.ToLower();
                 if (nomeObjeto.Contains("plane") || nomeObjeto.Contains("ground") || nomeObjeto.Contains("floor"))
@@ -565,7 +557,10 @@ public class Movement : MonoBehaviour
                     avisoProximidade = true;
                 }
 
-                Debug.DrawRay(origem, dir * hit.distance, Color.cyan);
+                if (mostrarDebugRaios)
+                {
+                    Debug.DrawRay(origemLateral, dir * hit.distance, Color.cyan);
+                }
             }
         }
 
@@ -573,6 +568,47 @@ public class Movement : MonoBehaviour
         if (avisoProximidade && !emColisao)
         {
             objetoColidido = objetoMaisProximo;
+        }
+
+        // === DESENHAR O CILINDRO DO CONTROLLER (Debug Visual) ===
+        if (mostrarDebugRaios)
+        {
+            DesenharCilindroController();
+        }
+    }
+
+    // NOVO: Desenhar o cilindro do CharacterController na Scene View
+    void DesenharCilindroController()
+    {
+        Vector3 centro = transform.position + controller.center;
+        float radius = controller.radius;
+        float altura = controller.height;
+
+        Color cor = bloqueadoFrente || bloqueadoTras ? Color.red : Color.green;
+        cor.a = 0.3f;
+
+        // Desenhar círculo superior
+        for (int i = 0; i < 16; i++)
+        {
+            float angulo1 = i * 22.5f * Mathf.Deg2Rad;
+            float angulo2 = (i + 1) * 22.5f * Mathf.Deg2Rad;
+
+            Vector3 p1 = centro + new Vector3(Mathf.Cos(angulo1) * radius, altura/2, Mathf.Sin(angulo1) * radius);
+            Vector3 p2 = centro + new Vector3(Mathf.Cos(angulo2) * radius, altura/2, Mathf.Sin(angulo2) * radius);
+
+            Debug.DrawLine(p1, p2, cor);
+
+            // Círculo inferior
+            Vector3 p3 = centro + new Vector3(Mathf.Cos(angulo1) * radius, -altura/2, Mathf.Sin(angulo1) * radius);
+            Vector3 p4 = centro + new Vector3(Mathf.Cos(angulo2) * radius, -altura/2, Mathf.Sin(angulo2) * radius);
+
+            Debug.DrawLine(p3, p4, cor);
+
+            // Linhas verticais
+            if (i % 4 == 0)
+            {
+                Debug.DrawLine(p1, p3, cor);
+            }
         }
     }
 
@@ -590,15 +626,10 @@ public class Movement : MonoBehaviour
 
     void PararDeEmergencia()
     {
-        // Parar imediatamente
         velocidadeAtual = 0;
         velocidadeDesejada = 0;
-
-        // NÃO resetar bloqueios - mantém o estado atual de colisão
-        // Só limpa o deslizamento
         deslizaParede = false;
 
-        // Parar as rodas
         if (wheelController != null)
         {
             wheelController.PararRodas();
@@ -612,7 +643,7 @@ public class Movement : MonoBehaviour
         if (nome.Contains("plane") || nome.Contains("ground") || nome.Contains("floor"))
             return;
 
-        // Evitar múltiplas deteções no mesmo frame
+        // Evitar múltiplas deteções
         if (Time.time - ultimoTempoColisao < 0.1f) return;
 
         // Determinar direção da colisão
@@ -622,44 +653,40 @@ public class Movement : MonoBehaviour
 
         float angulo = Vector3.Angle(transform.forward, dirParaObstaculo);
 
-        // BLOQUEIO IMEDIATO baseado no ângulo
-        if (angulo < 60f) // Colisão frontal
+        // BLOQUEIO baseado no ângulo
+        if (angulo < 60f)
         {
             bloqueadoFrente = true;
-            velocidadeAtual = 0; // Para imediatamente
+            velocidadeAtual = 0;
             velocidadeDesejada = 0;
 
-            // Empurrar ligeiramente para trás (recuo realista mas sutil)
-            Vector3 recuo = -transform.forward * 0.005f;  // Reduzido de 0.02f
+            Vector3 recuo = -transform.forward * 0.003f;
             recuo.y = 0;
             controller.Move(recuo);
 
-            Debug.Log($"💥 COLISÃO FRONTAL - Movimento bloqueado!");
+            Debug.Log($"💥 COLISÃO FRONTAL com {hit.gameObject.name}");
         }
-        else if (angulo > 120f) // Colisão traseira
+        else if (angulo > 120f)
         {
             bloqueadoTras = true;
             velocidadeAtual = 0;
 
-            // Empurrar ligeiramente para frente
-            Vector3 empurrao = transform.forward * 0.005f;  // Reduzido de 0.02f
+            Vector3 empurrao = transform.forward * 0.003f;
             empurrao.y = 0;
             controller.Move(empurrao);
 
-            Debug.Log($"💥 COLISÃO TRASEIRA - Marcha-atrás bloqueada!");
+            Debug.Log($"💥 COLISÃO TRASEIRA com {hit.gameObject.name}");
         }
-        else // Colisão lateral - permite deslizar
+        else
         {
-            // Calcular direção de deslize
             normalColisao = hit.normal;
             Vector3 projecao = Vector3.Project(transform.forward, normalColisao);
             direcaoDeslize = (transform.forward - projecao).normalized;
             deslizaParede = true;
 
-            Debug.Log($"💥 COLISÃO LATERAL - Deslizando pela parede");
+            Debug.Log($"💥 COLISÃO LATERAL com {hit.gameObject.name}");
         }
 
-        // Registar colisão
         emColisao = true;
         objetoColidido = hit.gameObject.name;
         pontoColisao = hit.point;
@@ -667,7 +694,6 @@ public class Movement : MonoBehaviour
         ultimoTempoColisao = Time.time;
         tempoBloqueio = duracaoBloqueio;
 
-        // Vibração visual
         StartCoroutine(EfeitoColisao());
     }
 
@@ -679,7 +705,7 @@ public class Movement : MonoBehaviour
 
         while (tempo < duracao)
         {
-            float intensidade = (1 - tempo / duracao) * 0.002f;  // Reduzido de 0.005f - mais sutil
+            float intensidade = (1 - tempo / duracao) * 0.002f;
             transform.position = posOriginal + Random.insideUnitSphere * intensidade;
             tempo += Time.deltaTime;
             yield return null;

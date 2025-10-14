@@ -966,7 +966,8 @@ MonoBehaviour:
   gravidade: -9.81
   avisosColisaoAtivos: 1
   distanciaAviso: 1.5
-  resistenciaColisao: 0.8
+  distanciaBloqueio: 0.02
+  mostrarDebugRaios: 1
   velocidadeAtual: 0
   velocidadeDesejada: 0
   travaoDeEmergencia: 0
