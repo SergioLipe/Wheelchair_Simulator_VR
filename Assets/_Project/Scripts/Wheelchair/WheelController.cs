@@ -5,7 +5,7 @@ using UnityEngine;
 /// Gere viragem (steering), rotação (spinning) e movimento diferencial das rodas
 /// Suporta dois modos: Direção Frontal (standard) e Direção Traseira (mais manobrável)
 /// </summary>
-public class WheelchairWheelController : MonoBehaviour
+public class WheelController : MonoBehaviour
 {
     // ========================================================================
     // JOINTS DE VIRAGEM (STEERING) - Controlam a direção das rodas
@@ -131,7 +131,7 @@ public class WheelchairWheelController : MonoBehaviour
     // ========================================================================
     
     // Referências a outros componentes
-    private WheelchairMovement movementScript;  // Script que move a cadeira
+    private Movement movementScript;  // Script que move a cadeira
     private Rigidbody rb;                       // Rigidbody para física
 
     // Rotações iniciais de cada joint (para poder voltar à posição neutra)
@@ -157,7 +157,7 @@ public class WheelchairWheelController : MonoBehaviour
     void Start()
     {
         // Obter referências aos componentes necessários
-        movementScript = GetComponent<WheelchairMovement>();
+        movementScript = GetComponent<Movement>();
         rb = GetComponent<Rigidbody>();
         posicaoAnterior = transform.position;
 

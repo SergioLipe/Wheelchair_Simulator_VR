@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 2048
     height: 1108.8
   m_ShowMode: 4
-  m_Title: Scene
+  m_Title: Project
   m_RootView: {fileID: 6}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -48,7 +48,7 @@ MonoBehaviour:
   m_MinSize: {x: 300, y: 100}
   m_MaxSize: {x: 24288, y: 16192}
   vertical: 0
-  controlID: 38
+  controlID: 96
   draggingID: 0
 --- !u!114 &3
 MonoBehaviour:
@@ -325,7 +325,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/_Project/Scripts/Controllers
+    - Assets/_Project/Scripts/Camera
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -335,16 +335,16 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 88
   m_LastFolders:
-  - Assets/_Project/Scripts/Controllers
+  - Assets/_Project/Scripts/Camera
   m_LastFoldersGridSize: 88
   m_LastProjectPath: C:\Unity\WheelchairVR_Prototype
   m_LockTracker:
     m_IsLocked: 0
   m_FolderTreeState:
     scrollPos: {x: 0, y: 0}
-    m_SelectedIDs: f4bc0000
-    m_LastClickedID: 48372
-    m_ExpandedIDs: 00000000bebb0000c0bb0000c2bb0000
+    m_SelectedIDs: fabc0000
+    m_LastClickedID: 48378
+    m_ExpandedIDs: 00000000c4bb0000c6bb0000c8bb0000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -373,7 +373,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 00000000bebb0000c0bb0000c2bb0000
+    m_ExpandedIDs: 00000000c4bb0000c6bb0000c8bb0000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -419,7 +419,7 @@ MonoBehaviour:
       m_OriginalEventType: 11
       m_IsRenamingFilename: 1
       m_TrimLeadingAndTrailingWhitespace: 0
-      m_ClientGUIView: {fileID: 11}
+      m_ClientGUIView: {fileID: 7}
     m_CreateAssetUtility:
       m_EndAction: {fileID: 0}
       m_InstanceID: 0
@@ -521,7 +521,7 @@ MonoBehaviour:
       scrollPos: {x: 0, y: 0}
       m_SelectedIDs: 
       m_LastClickedID: 0
-      m_ExpandedIDs: 16fbffff
+      m_ExpandedIDs: 16fbffffb2b90000eab90000
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -957,9 +957,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 0.5361595, y: 1.4808018, z: -1.6422719}
+    m_Target: {x: 18.999828, y: -4.749773, z: 1.2942996}
     speed: 2
-    m_Value: {x: 0.5361595, y: 1.4808018, z: -1.6422719}
+    m_Value: {x: 18.999828, y: -4.749773, z: 1.2942996}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1005,13 +1005,13 @@ MonoBehaviour:
     m_GridAxis: 1
     m_gridOpacity: 0.5
   m_Rotation:
-    m_Target: {x: -0.14617808, y: -0.44041142, z: 0.072525464, w: -0.88357335}
+    m_Target: {x: -0.116957046, y: -0.6760591, z: 0.11037658, w: -0.72002923}
     speed: 2
-    m_Value: {x: 0.14617808, y: 0.44041142, z: -0.072525464, w: 0.88357335}
+    m_Value: {x: 0.11695705, y: 0.6760591, z: -0.11037658, w: 0.7200293}
   m_Size:
-    m_Target: 0.23301369
+    m_Target: 10
     speed: 2
-    m_Value: 0.23301369
+    m_Value: 10
   m_Ortho:
     m_Target: 0
     speed: 2
