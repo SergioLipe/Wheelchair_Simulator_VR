@@ -14,16 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_PixelRect:
     serializedVersion: 2
-    x: 0
-    y: 43.2
+    x: 7.2000003
+    y: 50.4
     width: 2048
     height: 1108.8
   m_ShowMode: 4
-  m_Title: Project
+  m_Title: Scene
   m_RootView: {fileID: 6}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
-  m_Maximized: 1
+  m_Maximized: 0
 --- !u!114 &2
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -48,7 +48,7 @@ MonoBehaviour:
   m_MinSize: {x: 300, y: 100}
   m_MaxSize: {x: 24288, y: 16192}
   vertical: 0
-  controlID: 96
+  controlID: 38
   draggingID: 0
 --- !u!114 &3
 MonoBehaviour:
@@ -93,7 +93,7 @@ MonoBehaviour:
     serializedVersion: 2
     x: 0
     y: 0
-    width: 388
+    width: 560.8
     height: 681.6
   m_MinSize: {x: 201, y: 226}
   m_MaxSize: {x: 4001, y: 4026}
@@ -266,9 +266,9 @@ MonoBehaviour:
   m_Children: []
   m_Position:
     serializedVersion: 2
-    x: 388
+    x: 560.8
     y: 0
-    width: 1176
+    width: 1003.2
     height: 681.6
   m_MinSize: {x: 202, y: 226}
   m_MaxSize: {x: 4002, y: 4026}
@@ -299,8 +299,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Project\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 0
-    y: 705.6
+    x: 7.2000003
+    y: 768
     width: 1563
     height: 345.20007
   m_SerializedDataModeController:
@@ -325,7 +325,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/_Project/Scripts/Camera
+    - Assets/_Project/Scripts/Dummy
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -335,16 +335,16 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 88
   m_LastFolders:
-  - Assets/_Project/Scripts/Camera
+  - Assets/_Project/Scripts/Dummy
   m_LastFoldersGridSize: 88
   m_LastProjectPath: C:\Unity\WheelchairVR_Prototype
   m_LockTracker:
     m_IsLocked: 0
   m_FolderTreeState:
     scrollPos: {x: 0, y: 0}
-    m_SelectedIDs: fabc0000
-    m_LastClickedID: 48378
-    m_ExpandedIDs: 00000000c4bb0000c6bb0000c8bb0000
+    m_SelectedIDs: fcbc0000
+    m_LastClickedID: 48380
+    m_ExpandedIDs: 00000000c4bb0000c6bb0000c8bb000000ca9a3b
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -452,8 +452,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Inspector\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 1565
-    y: 24
+    x: 1571.2001
+    y: 86.4
     width: 483
     height: 1026.8
   m_SerializedDataModeController:
@@ -501,9 +501,9 @@ MonoBehaviour:
     m_TextWithWhitespace: "Hierarchy\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 0
-    y: 24
-    width: 387
+    x: 7.2000003
+    y: 86.4
+    width: 559.8
     height: 655.6
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -518,10 +518,10 @@ MonoBehaviour:
     m_OverlaysVisible: 1
   m_SceneHierarchy:
     m_TreeViewState:
-      scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 
-      m_LastClickedID: 0
-      m_ExpandedIDs: 16fbffffb2b90000eab90000
+      scrollPos: {x: 0, y: 5.4000244}
+      m_SelectedIDs: d4faffff
+      m_LastClickedID: -1324
+      m_ExpandedIDs: 40faffff44faffff48faffff50faffff54faffff58faffff5cfaffff60faffff64faffff68faffff74faffffd0faffffd4faffffd8faffffdcfaffffe0faffff0cfbffff16fbffffb2b90000eab9000000ba0000
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -567,9 +567,9 @@ MonoBehaviour:
     m_TextWithWhitespace: "Scene\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 389
-    y: 24
-    width: 1174
+    x: 568
+    y: 86.4
+    width: 1001.2
     height: 655.6
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -957,9 +957,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: -15.213584, y: 3.0483513, z: 8.894721}
+    m_Target: {x: 6.1962113, y: 1.5760796, z: -18.820606}
     speed: 2
-    m_Value: {x: 18.999828, y: -4.749773, z: 1.2942996}
+    m_Value: {x: 6.1962113, y: 1.5760796, z: -18.820606}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1005,9 +1005,9 @@ MonoBehaviour:
     m_GridAxis: 1
     m_gridOpacity: 0.5
   m_Rotation:
-    m_Target: {x: 0.07309469, y: 0.67487, z: 0.06838677, w: -0.7320787}
+    m_Target: {x: -0.0049265255, y: 0.99577326, z: 0.024257677, w: 0.09682312}
     speed: 2
-    m_Value: {x: 0.11695705, y: 0.6760591, z: -0.11037658, w: 0.7200293}
+    m_Value: {x: -0.0049227076, y: 0.99500155, z: 0.024238877, w: 0.096748084}
   m_Size:
     m_Target: 10
     speed: 2
@@ -1066,8 +1066,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Game\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 388
-    y: 79.200005
+    x: 395.2
+    y: 86.4
     width: 1174
     height: 655.6
   m_SerializedDataModeController:
