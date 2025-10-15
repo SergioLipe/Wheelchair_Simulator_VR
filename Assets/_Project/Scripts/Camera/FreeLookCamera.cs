@@ -74,24 +74,9 @@ public class FreeLookCamera : MonoBehaviour
         }
         
         
-        // Tecla C para centrar a vista
-        if (Input.GetKeyDown(KeyCode.C))
-        {
-            CentrarVista();
-        }
+
     }
     
 
-    void CentrarVista() // Centra a vista na posição frontal
-    {
-        // Reset das rotações para zero
-        rotacaoX = 0f;
-        rotacaoY = 0f;
-        
-        // Aplicar rotação neutra imediatamente
-        transform.localRotation = Quaternion.identity;
-        
-        // Feedback no console
-        Debug.Log("Vista centrada!");
-    }
+
 }
