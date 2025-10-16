@@ -275,8 +275,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sensibilidadeMouse: 2
-  limiteVertical: 60
-  limiteHorizontal: 90
+  limiteVertical: 40
+  limiteHorizontal: 120
   suavizarMovimento: 1
   velocidadeSuavizacao: 10
   rotacaoX: 0
