@@ -287,7 +287,7 @@ public class Movement : MonoBehaviour
                 {
                     tentandoVirarParado = true;
                     tempoTentandoVirar = 1f;
-                    Debug.Log("⚠️ Direção Traseira: Use W/S + A/D para virar (como um carro)");
+                   
                 }
 
                 return;
@@ -462,7 +462,7 @@ public class Movement : MonoBehaviour
         {
             GUI.color = new Color(1, 0, 0, 0.9f);
             GUI.Box(new Rect(10, 220, 250, 35), "");
-            GUI.color = Color.red;  // Texto em vermelho
+            GUI.color = Color.red;  
             GUI.Label(new Rect(15, 228, 240, 20), "TRAVÃO DE EMERGÊNCIA ATIVO!");
             GUI.color = Color.white;
         }

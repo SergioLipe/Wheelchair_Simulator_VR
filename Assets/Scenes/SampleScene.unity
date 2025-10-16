@@ -918,7 +918,6 @@ GameObject:
   - component: {fileID: 1071323159}
   - component: {fileID: 1071323160}
   - component: {fileID: 1071323163}
-  - component: {fileID: 1071323162}
   m_Layer: 0
   m_Name: Wheelchair
   m_TagString: Untagged
@@ -1060,50 +1059,6 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1071323162
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1071323152}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3e5a51a91e6d6c64086892c424336a8f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::VisualFeedback
-  efeitosAtivos: 1
-  corProximidade:
-    r: 1
-    g: 0.8
-    b: 0
-    a: 0.3
-  corColisao:
-    r: 1
-    g: 0
-    b: 0
-    a: 0.5
-  corDeslize:
-    r: 1
-    g: 0.5
-    b: 0
-    a: 0.4
-  velocidadePulsacao: 2
-  duracaoFlashColisao: 0.3
-  intensidadeMaximaVignette: 0.7
-  mostrarTextoAviso: 1
-  tamanhoTexto: 24
-  avisoAtivo: 0
-  tipoAvisoAtual: 0
-  intensidadeAtual: 0
-  collisionSystem: {fileID: 0}
-  mainCamera: {fileID: 0}
-  vignetteOverlay: {fileID: 0}
-  vignetteImage: {fileID: 0}
-  avisoCanvas: {fileID: 0}
-  textoAviso: {fileID: 0}
-  indicadoresDirecionais: []
-  tempoUltimoAviso: 0
 --- !u!114 &1071323163
 MonoBehaviour:
   m_ObjectHideFlags: 0

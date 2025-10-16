@@ -16,7 +16,7 @@ public class CollisionSystem : MonoBehaviour
 
     [Tooltip("Distância REAL para bloqueio (metros) - quão perto pode chegar")]
     [Range(0.01f, 0.2f)]
-    public float distanciaBloqueio = 0.05f;  // 5cm do objeto - MUITO próximo!
+    public float distanciaBloqueio = 0.05f;  
 
     [Tooltip("Mostrar raios de debug na Scene View")]
     public bool mostrarDebugRaios = true;
