@@ -916,6 +916,9 @@ GameObject:
   - component: {fileID: 1071323153}
   - component: {fileID: 1071323155}
   - component: {fileID: 1071323159}
+  - component: {fileID: 1071323160}
+  - component: {fileID: 1071323163}
+  - component: {fileID: 1071323162}
   m_Layer: 0
   m_Name: Wheelchair
   m_TagString: Untagged
@@ -990,19 +993,10 @@ MonoBehaviour:
   modoAtual: 1
   inclinacaoMaxima: 10
   gravidade: -9.81
-  avisosColisaoAtivos: 1
-  distanciaAviso: 1.5
-  distanciaBloqueio: 0.02
-  mostrarDebugRaios: 1
   velocidadeAtual: 0
   velocidadeDesejada: 0
   travaoDeEmergencia: 0
   tipoDirecaoAtual: Frontal
-  emColisao: 0
-  objetoColidido: 
-  distanciaObstaculo: 999
-  bloqueadoFrente: 0
-  bloqueadoTras: 0
   eficienciaRotacao: 100
 --- !u!114 &1071323159
 MonoBehaviour:
@@ -1041,6 +1035,96 @@ MonoBehaviour:
   velocidadeAtual: 0
   inputViragem: 0
   estaEmMovimento: 0
+--- !u!143 &1071323160
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1071323152}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.5
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0.001
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1071323162
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1071323152}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e5a51a91e6d6c64086892c424336a8f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VisualFeedback
+  efeitosAtivos: 1
+  corProximidade:
+    r: 1
+    g: 0.8
+    b: 0
+    a: 0.3
+  corColisao:
+    r: 1
+    g: 0
+    b: 0
+    a: 0.5
+  corDeslize:
+    r: 1
+    g: 0.5
+    b: 0
+    a: 0.4
+  velocidadePulsacao: 2
+  duracaoFlashColisao: 0.3
+  intensidadeMaximaVignette: 0.7
+  mostrarTextoAviso: 1
+  tamanhoTexto: 24
+  avisoAtivo: 0
+  tipoAvisoAtual: 0
+  intensidadeAtual: 0
+  collisionSystem: {fileID: 0}
+  mainCamera: {fileID: 0}
+  vignetteOverlay: {fileID: 0}
+  vignetteImage: {fileID: 0}
+  avisoCanvas: {fileID: 0}
+  textoAviso: {fileID: 0}
+  indicadoresDirecionais: []
+  tempoUltimoAviso: 0
+--- !u!114 &1071323163
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1071323152}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c7a145303b75694b863b6ed2c88a5ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CollisionSystem
+  avisosColisaoAtivos: 1
+  distanciaAviso: 0.1
+  distanciaBloqueio: 0.01
+  mostrarDebugRaios: 1
+  emColisao: 0
+  objetoColidido: 
+  distanciaObstaculo: 999
+  bloqueadoFrente: 0
+  bloqueadoTras: 0
 --- !u!1 &1470990607
 GameObject:
   m_ObjectHideFlags: 0
