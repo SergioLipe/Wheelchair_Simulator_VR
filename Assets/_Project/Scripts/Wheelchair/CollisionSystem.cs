@@ -35,6 +35,7 @@ public class CollisionSystem : MonoBehaviour
     // Componentes externos (injetados)
     private CharacterController controller;
     private Transform transformCadeira;
+    private CollisionFlashEffect flashEffect;
 
     // Variáveis de colisão
     private Vector3 normalColisao = Vector3.zero;
@@ -59,6 +60,14 @@ public class CollisionSystem : MonoBehaviour
     {
         this.controller = characterController;
         this.transformCadeira = transform;
+
+        // Obter ou criar o componente de flash
+        flashEffect = GetComponent<CollisionFlashEffect>();
+        if (flashEffect == null)
+        {
+            flashEffect = gameObject.AddComponent<CollisionFlashEffect>();
+            Debug.Log("✅ CollisionFlashEffect criado automaticamente");
+        }
 
         Debug.Log("✅ Sistema de Colisão inicializado!");
         Debug.Log($"📏 Distância de bloqueio: {distanciaBloqueio}m ({distanciaBloqueio * 100}cm)");
@@ -344,26 +353,49 @@ public class CollisionSystem : MonoBehaviour
 
         float angulo = Vector3.Angle(transformCadeira.forward, dirParaObstaculo);
 
-        // BLOQUEIO baseado no ângulo
-        if (angulo < 60f)
+        // BLOQUEIO baseado no ângulo + ATIVAR FLASH
+        if (angulo < 60f)  // Colisão frontal
         {
             bloqueadoFrente = true;
             velocidadeAtualRef = 0;
+            
+            // Ativar flash frontal
+            if (flashEffect != null)
+                flashEffect.FlashFrontal();
+            
             Debug.Log($"💥 COLISÃO FRONTAL com {hit.gameObject.name}");
         }
-        else if (angulo > 120f)
+        else if (angulo > 120f)  // Colisão traseira
         {
             bloqueadoTras = true;
             velocidadeAtualRef = 0;
+            
+            // Ativar flash traseiro
+            if (flashEffect != null)
+                flashEffect.FlashTraseiro();
+            
             Debug.Log($"💥 COLISÃO TRASEIRA com {hit.gameObject.name}");
         }
-        else
+        else  // Colisão lateral
         {
             normalColisao = hit.normal;
             Vector3 projecao = Vector3.Project(transformCadeira.forward, normalColisao);
             direcaoDeslize = (transformCadeira.forward - projecao).normalized;
             deslizaParede = true;
-            Debug.Log($"💥 COLISÃO LATERAL com {hit.gameObject.name}");
+
+            // Determinar se é esquerda ou direita
+            float lado = Vector3.Dot(transformCadeira.right, dirParaObstaculo);
+            
+            // Ativar flash lateral
+            if (flashEffect != null)
+            {
+                if (lado > 0)
+                    flashEffect.FlashLateralDireito();
+                else
+                    flashEffect.FlashLateralEsquerdo();
+            }
+
+            Debug.Log($"💥 COLISÃO LATERAL ({(lado > 0 ? "Direita" : "Esquerda")}) com {hit.gameObject.name}");
         }
 
         emColisao = true;
@@ -384,13 +416,11 @@ public class CollisionSystem : MonoBehaviour
     }
 
     // ===== PROPRIEDADES PÚBLICAS (Getters) =====
-    // CRÍTICO: Se usar colisão física, só retorna true se houver colisão REAL
 
     public bool EstaBloqueadoFrente 
     {
         get
         {
-            // Se usar colisão física, só bloqueia se houve colisão REAL
             if (usarColisaoFisica)
             {
                 return bloqueadoFrente && (Time.time - ultimoTempoColisao < duracaoBloqueio);
@@ -403,7 +433,6 @@ public class CollisionSystem : MonoBehaviour
     {
         get
         {
-            // Se usar colisão física, só bloqueia se houve colisão REAL
             if (usarColisaoFisica)
             {
                 return bloqueadoTras && (Time.time - ultimoTempoColisao < duracaoBloqueio);

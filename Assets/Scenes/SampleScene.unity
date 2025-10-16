@@ -918,6 +918,7 @@ GameObject:
   - component: {fileID: 1071323159}
   - component: {fileID: 1071323160}
   - component: {fileID: 1071323163}
+  - component: {fileID: 1071323164}
   m_Layer: 0
   m_Name: Wheelchair
   m_TagString: Untagged
@@ -1075,11 +1076,27 @@ MonoBehaviour:
   distanciaAviso: 0.1
   distanciaBloqueio: 0.01
   mostrarDebugRaios: 1
+  usarColisaoFisica: 1
   emColisao: 0
   objetoColidido: 
   distanciaObstaculo: 999
   bloqueadoFrente: 0
   bloqueadoTras: 0
+--- !u!114 &1071323164
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1071323152}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b0e119940d2299418edaaf31e9b6be5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CollisionFlashEffect
+  flashAtivo: 1
+  duracaoFlash: 0.3
+  opacidadeMaxima: 0.6
 --- !u!1 &1470990607
 GameObject:
   m_ObjectHideFlags: 0
