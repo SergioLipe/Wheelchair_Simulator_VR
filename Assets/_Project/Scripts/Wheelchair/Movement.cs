@@ -54,7 +54,7 @@ public class Movement : MonoBehaviour
     private CharacterController controller;
     private Vector3 movimentoVelocidade;
     private WheelController wheelController;
-    
+
     // Sistema de colisão (separado)
     private CollisionSystem sistemaColisao;
 
@@ -75,21 +75,21 @@ public class Movement : MonoBehaviour
 
     void Start()
     {
-        // Configurar o CharacterController com valores ULTRA-OTIMIZADOS
+        // Configurar o CharacterController
         controller = GetComponent<CharacterController>();
         if (controller == null)
         {
             controller = gameObject.AddComponent<CharacterController>();
         }
 
-        // === VALORES OTIMIZADOS PARA CONTACTO REAL ===
+        // === VALORES ABSOLUTOS MÍNIMOS ===
         controller.height = 1.4f;
-        controller.radius = 0.28f;
+        controller.radius = 0.2f;  // 20cm - MÍNIMO para não atravessar paredes
         controller.center = new Vector3(0, 0.7f, 0);
 
-        // === SkinWidth O MAIS PEQUENO POSSÍVEL ===
-        controller.skinWidth = 0.002f;
-        controller.minMoveDistance = 0.00001f;
+        // === SkinWidth ZERO (ou quase) ===
+        controller.skinWidth = 0.0001f;  // 0.1mm - PRATICAMENTE ZERO!
+        controller.minMoveDistance = 0.0f;  // ZERO absoluto
         controller.stepOffset = 0.1f;
 
         // Elevar um pouco no início
@@ -112,9 +112,10 @@ public class Movement : MonoBehaviour
         velocidadeMarchaAtras = velocidadeMarchaAtras / 3.6f;
 
         Debug.Log("✅ WheelchairMovement inicializado!");
-        Debug.Log($"📏 Radius: {controller.radius}m | SkinWidth: {controller.skinWidth}m");
+        Debug.Log($"📏 Radius: {controller.radius}m ({controller.radius * 100}cm)");
+        Debug.Log($"📏 SkinWidth: {controller.skinWidth}m ({controller.skinWidth * 10000}mm)");
+        Debug.Log($"⚠️ CONFIGURAÇÃO ULTRA-AGRESSIVA - Contacto MÁXIMO!");
     }
-
     void Update()
     {
         // Atualizar tipo de direção para debug
@@ -228,7 +229,7 @@ public class Movement : MonoBehaviour
 
         // === ACELERAÇÃO E DESACELERAÇÃO ===
 
-        if (!sistemaColisao.EstaBloqueadoFrente && !sistemaColisao.EstaBloqueadoTras && 
+        if (!sistemaColisao.EstaBloqueadoFrente && !sistemaColisao.EstaBloqueadoTras &&
             Mathf.Abs(velocidadeDesejada) > Mathf.Abs(velocidadeAtual))
         {
             float aceleracao = velocidadeMaxima / tempoAceleracao;
@@ -285,7 +286,7 @@ public class Movement : MonoBehaviour
                 {
                     tentandoVirarParado = true;
                     tempoTentandoVirar = 1f;
-                   
+
                 }
 
                 return;
@@ -375,7 +376,7 @@ public class Movement : MonoBehaviour
     {
         velocidadeAtual = 0;
         velocidadeDesejada = 0;
-        
+
         // Limpar deslizamento através do sistema de colisão
         sistemaColisao.LimparDeslizamento();
 
@@ -431,12 +432,12 @@ public class Movement : MonoBehaviour
         // Estado (usa sistema de colisão)
         string estado = "Normal";
         if (sistemaColisao.EstaDeslizandoParede) estado = "Deslizar";
-        else if (sistemaColisao.EstaEmColisao || sistemaColisao.EstaBloqueadoFrente || sistemaColisao.EstaBloqueadoTras) 
+        else if (sistemaColisao.EstaEmColisao || sistemaColisao.EstaBloqueadoFrente || sistemaColisao.EstaBloqueadoTras)
             estado = "Colisão";
 
         // Amarelo para deslizar, vermelho para colisão, verde para normal
         if (sistemaColisao.EstaDeslizandoParede) GUI.color = Color.yellow;
-        else if (sistemaColisao.EstaEmColisao || sistemaColisao.EstaBloqueadoFrente || sistemaColisao.EstaBloqueadoTras) 
+        else if (sistemaColisao.EstaEmColisao || sistemaColisao.EstaBloqueadoFrente || sistemaColisao.EstaBloqueadoTras)
             GUI.color = Color.red;
         else GUI.color = Color.green;
 
@@ -448,7 +449,7 @@ public class Movement : MonoBehaviour
         {
             GUI.color = new Color(1, 0, 0, 0.9f);
             GUI.Box(new Rect(10, 220, 250, 35), "");
-            GUI.color = Color.red;  
+            GUI.color = Color.red;
             GUI.Label(new Rect(15, 228, 240, 20), "TRAVÃO DE EMERGÊNCIA ATIVO!");
             GUI.color = Color.white;
         }
