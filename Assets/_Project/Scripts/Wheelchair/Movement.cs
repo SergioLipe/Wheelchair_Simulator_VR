@@ -55,7 +55,7 @@ public class Movement : MonoBehaviour
     private Vector3 movimentoVelocidade;
     private WheelController wheelController;
     
-    // Sistema de colisão (NOVO - separado)
+    // Sistema de colisão (separado)
     private CollisionSystem sistemaColisao;
 
     // Sistema de input suavizado
@@ -75,22 +75,21 @@ public class Movement : MonoBehaviour
 
     void Start()
     {
-        // Configurar o CharacterController com valores OTIMIZADOS
+        // Configurar o CharacterController com valores ULTRA-OTIMIZADOS
         controller = GetComponent<CharacterController>();
         if (controller == null)
         {
             controller = gameObject.AddComponent<CharacterController>();
         }
 
-        // === VALORES OTIMIZADOS PARA COLISÃO PRECISA ===
-        // Assumindo que a cadeira tem ~60cm de largura (escala 1x1x1)
+        // === VALORES OTIMIZADOS PARA CONTACTO REAL ===
         controller.height = 1.4f;
-        controller.radius = 0.25f;  // REDUZIDO de 0.35f para 0.25f (25cm = mais preciso)
+        controller.radius = 0.28f;
         controller.center = new Vector3(0, 0.7f, 0);
 
-        // SkinWidth MÍNIMO possível
-        controller.skinWidth = 0.005f;  // REDUZIDO de 0.01f para 0.005f
-        controller.minMoveDistance = 0.0001f;  // Ainda mais sensível
+        // === SkinWidth O MAIS PEQUENO POSSÍVEL ===
+        controller.skinWidth = 0.002f;
+        controller.minMoveDistance = 0.00001f;
         controller.stepOffset = 0.1f;
 
         // Elevar um pouco no início
@@ -99,7 +98,7 @@ public class Movement : MonoBehaviour
         // Obter referência ao wheel controller
         wheelController = GetComponent<WheelController>();
 
-        // === INICIALIZAR SISTEMA DE COLISÃO (NOVO) ===
+        // === INICIALIZAR SISTEMA DE COLISÃO ===
         sistemaColisao = GetComponent<CollisionSystem>();
         if (sistemaColisao == null)
         {
@@ -124,7 +123,7 @@ public class Movement : MonoBehaviour
             tipoDirecaoAtual = wheelController.GetTipoDirecao().ToString();
         }
 
-        // === ATUALIZAR SISTEMA DE COLISÃO (NOVO) ===
+        // === ATUALIZAR SISTEMA DE COLISÃO ===
         sistemaColisao.Atualizar();
 
         // Atualizar temporizador do aviso de direção traseira
@@ -197,7 +196,7 @@ public class Movement : MonoBehaviour
         float velocidadeMaxima = modoAtual == ModosVelocidade.Lento ?
                                 velocidadeMaximaLenta : velocidadeMaximaNormal;
 
-        // === SISTEMA DE BLOQUEIO REALISTA (usa sistema de colisão) ===
+        // === SISTEMA DE BLOQUEIO REALISTA ===
 
         // Se está bloqueado à frente, NÃO permite movimento frontal
         if (sistemaColisao.EstaBloqueadoFrente && inputVerticalSuavizado > 0)
@@ -208,7 +207,6 @@ public class Movement : MonoBehaviour
             if (inputVertical > 0.5f)
             {
                 velocidadeAtual = Mathf.Max(velocidadeAtual - 0.5f * Time.deltaTime, -0.05f);
-                Debug.Log("⚠️ Bloqueado à frente - impossível avançar!");
             }
         }
         // Se está bloqueado atrás, NÃO permite marcha-atrás
@@ -352,18 +350,6 @@ public class Movement : MonoBehaviour
 
         direcaoMovimento.y = movimentoVelocidade.y;
 
-        // === VERIFICAÇÃO PRÉVIA DE COLISÃO (usa sistema de colisão) ===
-        if (velocidadeAtual != 0)
-        {
-            // Usar distância muito pequena para verificação
-            Vector3 proximaPosicao = transform.position + direcaoMovimento.normalized * 0.02f;
-            if (!sistemaColisao.PodeMoverPara(proximaPosicao))
-            {
-                velocidadeAtual = 0;
-                return;
-            }
-        }
-
         controller.Move(direcaoMovimento * Time.deltaTime);
     }
 
@@ -425,7 +411,7 @@ public class Movement : MonoBehaviour
         velocidadeAtual *= multiplicador;
     }
 
-    // ===== GUI DE DEBUG =====
+    // ===== GUI DE DEBUG ORIGINAL =====
 
     void OnGUI()
     {

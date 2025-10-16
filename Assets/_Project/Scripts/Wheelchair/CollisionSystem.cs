@@ -12,14 +12,18 @@ public class CollisionSystem : MonoBehaviour
     public bool avisosColisaoAtivos = true;
 
     [Tooltip("Distância para deteção de obstáculos")]
-    public float distanciaAviso = 1.5f;
+    public float distanciaAviso = 1.0f;
 
     [Tooltip("Distância REAL para bloqueio (metros) - quão perto pode chegar")]
-    [Range(0.01f, 0.2f)]
-    public float distanciaBloqueio = 0.05f;  
+    [Range(0.001f, 0.03f)]
+    public float distanciaBloqueio = 0.008f;  
 
     [Tooltip("Mostrar raios de debug na Scene View")]
     public bool mostrarDebugRaios = true;
+
+    [Header("=== Configuração Física ===")]
+    [Tooltip("Confiar principalmente nas colisões físicas do CharacterController?")]
+    public bool usarColisaoFisica = true;
 
     [Header("=== Estado de Colisão (Debug) ===")]
     [SerializeField] private bool emColisao = false;
@@ -58,6 +62,7 @@ public class CollisionSystem : MonoBehaviour
 
         Debug.Log("✅ Sistema de Colisão inicializado!");
         Debug.Log($"📏 Distância de bloqueio: {distanciaBloqueio}m ({distanciaBloqueio * 100}cm)");
+        Debug.Log($"🎯 Modo: {(usarColisaoFisica ? "Colisão Física REAL" : "Raycasts Preventivos")}");
     }
 
     /// <summary>
@@ -65,10 +70,21 @@ public class CollisionSystem : MonoBehaviour
     /// </summary>
     public void Atualizar()
     {
-        // Verificar obstáculos
-        if (avisosColisaoAtivos)
+        // Se usar colisão física, APENAS mostrar raios visuais, NÃO bloquear
+        if (usarColisaoFisica)
         {
-            VerificarObstaculosCompleto();
+            if (mostrarDebugRaios)
+            {
+                VerificarObstaculosVisual();
+            }
+        }
+        else
+        {
+            // Modo antigo: usar raycasts para bloquear
+            if (avisosColisaoAtivos)
+            {
+                VerificarObstaculosCompleto();
+            }
         }
 
         // Atualizar temporizador de bloqueio
@@ -97,6 +113,12 @@ public class CollisionSystem : MonoBehaviour
     /// </summary>
     public bool PodeMoverPara(Vector3 posicao)
     {
+        // Se usar colisão física, SEMPRE permite - CharacterController decide
+        if (usarColisaoFisica)
+        {
+            return true;
+        }
+
         Vector3 origem = transformCadeira.position + Vector3.up * 0.5f;
         Vector3 direcao = (posicao - transformCadeira.position).normalized;
         float distancia = Vector3.Distance(transformCadeira.position, posicao);
@@ -118,12 +140,58 @@ public class CollisionSystem : MonoBehaviour
     }
 
     /// <summary>
+    /// Verificar obstáculos apenas para VISUALIZAÇÃO (não bloqueia)
+    /// </summary>
+    void VerificarObstaculosVisual()
+    {
+        Vector3 centroController = transformCadeira.position + Vector3.up * 0.7f;
+        
+        avisoProximidade = false;
+        float menorDist = 999f;
+
+        // Raios frontais para visualização
+        for (float offsetY = 0.3f; offsetY <= 0.9f; offsetY += 0.3f)
+        {
+            Vector3 origemLocal = centroController;
+            origemLocal.y = transformCadeira.position.y + offsetY;
+            
+            Vector3 origemRaio = origemLocal + transformCadeira.forward * controller.radius;
+            
+            RaycastHit hit;
+
+            if (Physics.Raycast(origemRaio, transformCadeira.forward, out hit, distanciaAviso))
+            {
+                string nomeObjeto = hit.collider.name.ToLower();
+                if (nomeObjeto.Contains("plane") || nomeObjeto.Contains("ground") || nomeObjeto.Contains("floor"))
+                    continue;
+
+                float dist = hit.distance;
+
+                if (dist < menorDist)
+                {
+                    menorDist = dist;
+                    avisoProximidade = true;
+                }
+
+                Color corRaio = dist < 0.05f ? Color.red : 
+                               (dist < 0.2f ? Color.yellow : Color.green);
+                Debug.DrawRay(origemRaio, transformCadeira.forward * hit.distance, corRaio);
+            }
+            else
+            {
+                Debug.DrawRay(origemRaio, transformCadeira.forward * 0.5f, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+            }
+        }
+
+        distanciaObstaculo = menorDist;
+        DesenharCilindroController();
+    }
+
+    /// <summary>
     /// Sistema completo de verificação de obstáculos em múltiplas direções
     /// </summary>
     void VerificarObstaculosCompleto()
     {
-        // === ORIGEM DOS RAIOS AJUSTADA ===
-        // Partir da borda do controller, não do centro!
         Vector3 centroController = transformCadeira.position + Vector3.up * 0.7f;
         
         avisoProximidade = false;
@@ -132,22 +200,18 @@ public class CollisionSystem : MonoBehaviour
         float menorDist = 999f;
         string objetoMaisProximo = "";
 
-        // === VERIFICAÇÃO FRONTAL MELHORADA ===
-        // Múltiplos raios começando NA BORDA do controller
+        // === VERIFICAÇÃO FRONTAL ===
         for (float offsetX = -0.2f; offsetX <= 0.2f; offsetX += 0.1f)
         {
             for (float offsetY = 0.2f; offsetY <= 1.0f; offsetY += 0.4f)
             {
-                // Ponto de origem NA BORDA do cilindro do controller
                 Vector3 origemLocal = centroController + transformCadeira.right * offsetX;
                 origemLocal.y = transformCadeira.position.y + offsetY;
                 
-                // Adicionar o radius para começar na borda
                 Vector3 origemRaio = origemLocal + transformCadeira.forward * controller.radius;
                 
                 RaycastHit hit;
 
-                // Raio frontal - distância ajustada
                 if (Physics.Raycast(origemRaio, transformCadeira.forward, out hit, distanciaAviso))
                 {
                     string nomeObjeto = hit.collider.name.ToLower();
@@ -175,7 +239,6 @@ public class CollisionSystem : MonoBehaviour
                         avisoProximidade = true;
                     }
 
-                    // Debug visual melhorado
                     if (mostrarDebugRaios)
                     {
                         Color corRaio = dist < distanciaBloqueio ? Color.red : 
@@ -185,7 +248,6 @@ public class CollisionSystem : MonoBehaviour
                 }
                 else if (mostrarDebugRaios)
                 {
-                    // Mostrar raio mesmo sem hit
                     Debug.DrawRay(origemRaio, transformCadeira.forward * 0.5f, Color.gray);
                 }
 
@@ -213,42 +275,12 @@ public class CollisionSystem : MonoBehaviour
             }
         }
 
-        // === VERIFICAÇÃO LATERAL (360°) ===
-        for (float angulo = -90f; angulo <= 90f; angulo += 30f)
-        {
-            if (angulo == 0) continue;
-
-            Vector3 dir = Quaternion.Euler(0, angulo, 0) * transformCadeira.forward;
-            Vector3 origemLateral = centroController + dir * controller.radius;
-            
-            RaycastHit hit;
-
-            if (Physics.Raycast(origemLateral, dir, out hit, distanciaAviso * 0.7f))
-            {
-                string nomeObjeto = hit.collider.name.ToLower();
-                if (nomeObjeto.Contains("plane") || nomeObjeto.Contains("ground") || nomeObjeto.Contains("floor"))
-                    continue;
-
-                if (hit.distance < menorDist)
-                {
-                    menorDist = hit.distance;
-                    avisoProximidade = true;
-                }
-
-                if (mostrarDebugRaios)
-                {
-                    Debug.DrawRay(origemLateral, dir * hit.distance, Color.cyan);
-                }
-            }
-        }
-
         distanciaObstaculo = menorDist;
         if (avisoProximidade && !emColisao)
         {
             objetoColidido = objetoMaisProximo;
         }
 
-        // === DESENHAR O CILINDRO DO CONTROLLER (Debug Visual) ===
         if (mostrarDebugRaios)
         {
             DesenharCilindroController();
@@ -317,22 +349,12 @@ public class CollisionSystem : MonoBehaviour
         {
             bloqueadoFrente = true;
             velocidadeAtualRef = 0;
-
-            Vector3 recuo = -transformCadeira.forward * 0.003f;
-            recuo.y = 0;
-            controller.Move(recuo);
-
             Debug.Log($"💥 COLISÃO FRONTAL com {hit.gameObject.name}");
         }
         else if (angulo > 120f)
         {
             bloqueadoTras = true;
             velocidadeAtualRef = 0;
-
-            Vector3 empurrao = transformCadeira.forward * 0.003f;
-            empurrao.y = 0;
-            controller.Move(empurrao);
-
             Debug.Log($"💥 COLISÃO TRASEIRA com {hit.gameObject.name}");
         }
         else
@@ -341,7 +363,6 @@ public class CollisionSystem : MonoBehaviour
             Vector3 projecao = Vector3.Project(transformCadeira.forward, normalColisao);
             direcaoDeslize = (transformCadeira.forward - projecao).normalized;
             deslizaParede = true;
-
             Debug.Log($"💥 COLISÃO LATERAL com {hit.gameObject.name}");
         }
 
@@ -351,28 +372,6 @@ public class CollisionSystem : MonoBehaviour
         tempoColisao = Time.time;
         ultimoTempoColisao = Time.time;
         tempoBloqueio = duracaoBloqueio;
-
-        StartCoroutine(EfeitoColisao());
-    }
-
-    /// <summary>
-    /// Efeito visual de vibração ao colidir
-    /// </summary>
-    IEnumerator EfeitoColisao()
-    {
-        Vector3 posOriginal = transformCadeira.position;
-        float duracao = 0.2f;
-        float tempo = 0;
-
-        while (tempo < duracao)
-        {
-            float intensidade = (1 - tempo / duracao) * 0.002f;
-            transformCadeira.position = posOriginal + Random.insideUnitSphere * intensidade;
-            tempo += Time.deltaTime;
-            yield return null;
-        }
-
-        transformCadeira.position = posOriginal;
     }
 
     /// <summary>
@@ -385,9 +384,34 @@ public class CollisionSystem : MonoBehaviour
     }
 
     // ===== PROPRIEDADES PÚBLICAS (Getters) =====
+    // CRÍTICO: Se usar colisão física, só retorna true se houver colisão REAL
 
-    public bool EstaBloqueadoFrente => bloqueadoFrente;
-    public bool EstaBloqueadoTras => bloqueadoTras;
+    public bool EstaBloqueadoFrente 
+    {
+        get
+        {
+            // Se usar colisão física, só bloqueia se houve colisão REAL
+            if (usarColisaoFisica)
+            {
+                return bloqueadoFrente && (Time.time - ultimoTempoColisao < duracaoBloqueio);
+            }
+            return bloqueadoFrente;
+        }
+    }
+
+    public bool EstaBloqueadoTras 
+    {
+        get
+        {
+            // Se usar colisão física, só bloqueia se houve colisão REAL
+            if (usarColisaoFisica)
+            {
+                return bloqueadoTras && (Time.time - ultimoTempoColisao < duracaoBloqueio);
+            }
+            return bloqueadoTras;
+        }
+    }
+
     public bool EstaDeslizandoParede => deslizaParede;
     public Vector3 DirecaoDeslize => direcaoDeslize;
     public bool EstaEmColisao => emColisao;
