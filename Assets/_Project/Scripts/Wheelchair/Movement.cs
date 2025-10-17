@@ -364,11 +364,15 @@ public class Movement : MonoBehaviour
     {
         if (controller.isGrounded)
         {
-            movimentoVelocidade.y = -2f;
+            movimentoVelocidade.y = -0.5f;
         }
         else
         {
+            // Gravidade normal quando no ar
             movimentoVelocidade.y += gravidade * Time.deltaTime;
+
+            //  Limitar velocidade máxima de queda (evita bugs)
+            movimentoVelocidade.y = Mathf.Max(movimentoVelocidade.y, -20f);
         }
     }
 
