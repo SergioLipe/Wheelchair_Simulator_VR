@@ -6,9 +6,15 @@ public class FreeLookCamera : MonoBehaviour
     [Tooltip("Sensibilidade do rato")]
     public float sensibilidadeMouse = 2f;
     
-    [Tooltip("Limite de olhar para cima/baixo (graus)")]
-    public float limiteVertical = 80f;
+    [Tooltip("Limite de olhar para CIMA (graus)")] // <<< MODIFICADO
+    public float limiteVerticalCima = 80f;
     
+    [Tooltip("Limite de olhar para BAIXO (quando olha em FRENTE) (graus)")] // <<< NOVO
+    public float limiteVerticalBaixoFrontal = 80f;
+
+    [Tooltip("Limite de olhar para BAIXO (quando olha para TRÁS) (graus)")] // <<< NOVO
+    public float limiteVerticalBaixoTraseiro = 20f; // Ex: Um valor mais baixo para não ver o pescoço
+
     [Tooltip("Limite de olhar para esquerda/direita (graus)")]
     public float limiteHorizontal = 90f;  
     
@@ -51,9 +57,28 @@ public class FreeLookCamera : MonoBehaviour
             
             // Rotação vertical (olhar cima/baixo)
             rotacaoX -= mouseY;
-            rotacaoX = Mathf.Clamp(rotacaoX, -limiteVertical, limiteVertical);
+            // A clamping (limitação) da rotação X é feita mais abaixo
         }
+
+        // --- Lógica de Limite Vertical Dinâmico --- // <<< NOVO BLOCО
         
+        // 1. Calcula o "fator" de quanto estamos a olhar para trás (0 = frente, 1 = totalmente atrás)
+        // Usamos Mathf.Abs para tratar a esquerda e a direita da mesma forma.
+        float fatorTras = Mathf.Abs(rotacaoY) / limiteHorizontal; 
+        
+        // 2. Interpola linearmente o limite de olhar para baixo
+        // Lerp(a, b, t) -> se t=0, retorna 'a'. se t=1, retorna 'b'.
+        float limiteBaixoAtual = Mathf.Lerp(
+            limiteVerticalBaixoFrontal, 
+            limiteVerticalBaixoTraseiro, 
+            fatorTras
+        );
+        
+        // 3. Aplica os limites verticais (clamping)
+        rotacaoX = Mathf.Clamp(rotacaoX, -limiteVerticalCima, limiteBaixoAtual); // <<< MODIFICADO
+        
+        // ---------------------------------------------
+
         // Criar a rotação final
         rotacaoAlvo = Quaternion.Euler(rotacaoX, rotacaoY, 0f);
         
@@ -62,8 +87,8 @@ public class FreeLookCamera : MonoBehaviour
         {
             // Aplicar rotação suave usando interpolação esférica
             transform.localRotation = Quaternion.Slerp(
-                transform.localRotation, 
-                rotacaoAlvo, 
+                transform.localRotation,
+                rotacaoAlvo,
                 velocidadeSuavizacao * Time.deltaTime
             );
         }
@@ -72,11 +97,5 @@ public class FreeLookCamera : MonoBehaviour
             // Aplicar rotação direta sem suavização
             transform.localRotation = rotacaoAlvo;
         }
-        
-        
-
     }
-    
-
-
 }
