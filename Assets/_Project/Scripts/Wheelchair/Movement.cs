@@ -66,6 +66,10 @@ public class Movement : MonoBehaviour
     private bool tentandoVirarParado = false;
     private float tempoTentandoVirar = 0f;
 
+    // Variável pública para o script de som saber se o jogador está a acelerar
+    [HideInInspector] // Esconde do Inspetor, mas é pública
+    public bool jogadorEstaAcelerando = false;
+
     public enum ModosVelocidade
     {
         Lento,
@@ -187,6 +191,9 @@ public class Movement : MonoBehaviour
         // Obter input do jogador
         float inputVertical = Input.GetAxis("Vertical");
         float inputHorizontal = Input.GetAxis("Horizontal");
+
+        // Verifica se o input (antes de ser suavizado) é significativo
+        jogadorEstaAcelerando = (Mathf.Abs(inputVertical) > 0.1f);
 
         // Suavizar o input
         float suavizacao = 3f;
