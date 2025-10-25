@@ -9,11 +9,11 @@ using System.Collections.Generic;
 public class Movement : MonoBehaviour
 {
     [Header("=== Configurações de Velocidade ===")]
-    [Tooltip("Velocidade máxima em modo Exterior/Normal (km/h)")]
-    public float velocidadeMaximaExterior = 6f;
+    [Tooltip("Velocidade máxima em modo normal (km/h)")]
+    public float velocidadeMaximaNormal = 6f;
 
-    [Tooltip("Velocidade máxima em modo Interior/Lento (km/h)")]
-    public float velocidadeMaximaInterior = 3f;
+    [Tooltip("Velocidade máxima em modo lento/interior (km/h)")]
+    public float velocidadeMaximaLenta = 3f;
 
     [Tooltip("Velocidade de marcha-atrás (km/h)")]
     public float velocidadeMarchaAtras = 2f;
@@ -34,7 +34,7 @@ public class Movement : MonoBehaviour
 
     [Header("=== Modos de Condução ===")]
     [Tooltip("Modo atual de velocidade")]
-    public ModosVelocidade modoAtual = ModosVelocidade.Exterior;
+    public ModosVelocidade modoAtual = ModosVelocidade.Normal;
 
     // --- NOVA SECÇÃO DE SONS ---
     [Header("=== Sons de Efeitos (One-Shot) ===")]
@@ -87,11 +87,6 @@ public class Movement : MonoBehaviour
     private bool tentandoVirarParado = false;
     private float tempoTentandoVirar = 0f;
 
-<<<<<<< HEAD
-    // === Sistema de sons ===
-    private Sounds wheelchairSounds;
-    private bool estavaMoverAnterior = false;
-=======
     // Variável pública para o script de som saber se o jogador está a acelerar
     [HideInInspector] // Esconde do Inspetor, mas é pública
     public bool jogadorEstaAcelerando = false;
@@ -101,12 +96,11 @@ public class Movement : MonoBehaviour
     private string tipoDirecaoCache = "Frontal";
     private bool estaEmColisaoCache = false;
 
->>>>>>> 0f5d384b36807a6e373ab80d0228edf93def16bd
 
     public enum ModosVelocidade
     {
-        Interior,  // Modo Lento (3 km/h)
-        Exterior,  // Modo Normal (6 km/h)
+        Lento,
+        Normal,
         Desligado
     }
 
@@ -143,32 +137,9 @@ public class Movement : MonoBehaviour
         }
         sistemaColisao.Inicializar(controller, transform);
 
-        // === INICIALIZAR SISTEMA DE SONS (SEGURO) ===
-        // Tentar encontrar o WheelchairSounds em vários locais
-        wheelchairSounds = GetComponentInChildren<Sounds>();
-        
-        if (wheelchairSounds == null && transform.parent != null)
-        {
-            wheelchairSounds = transform.parent.GetComponentInChildren<Sounds>();
-        }
-        
-        if (wheelchairSounds == null)
-        {
-            wheelchairSounds = FindObjectOfType<Sounds>();
-        }
-        
-        if (wheelchairSounds == null)
-        {
-            Debug.LogWarning("⚠️ WheelchairSounds não encontrado! Sons não vão funcionar. Certifica-te que o script está no GameObject 'EletricWheelchair'.");
-        }
-        else
-        {
-            Debug.Log("✅ WheelchairSounds encontrado e conectado!");
-        }
-
         // Converter km/h para m/s
-        velocidadeMaximaExterior = velocidadeMaximaExterior / 3.6f;
-        velocidadeMaximaInterior = velocidadeMaximaInterior / 3.6f;
+        velocidadeMaximaNormal = velocidadeMaximaNormal / 3.6f;
+        velocidadeMaximaLenta = velocidadeMaximaLenta / 3.6f;
         velocidadeMarchaAtras = velocidadeMarchaAtras / 3.6f;
 
         // Cache inicial da direção
@@ -179,7 +150,6 @@ public class Movement : MonoBehaviour
 
         Debug.Log("✅ Cadeira de Rodas (Movement.cs) inicializada!");
     }
-    
     void Update()
     {
         // Atualizar tipo de direção para debug
@@ -258,75 +228,23 @@ public class Movement : MonoBehaviour
 
         // Aplicar sempre a gravidade
         AplicarGravidade();
-
-        // === Gerir sons baseado no movimento ===
-        GerirSons();
-    }
-
-    // === Método para gerir os sons ===
-    void GerirSons()
-    {
-        if (wheelchairSounds == null) return;
-
-        bool estaMovendoAgora = EstaEmMovimento();
-        bool modoInterior = (modoAtual == ModosVelocidade.Interior);
-
-        // Se começou a mover OU mudou de modo durante movimento
-        if (estaMovendoAgora && !estavaMoverAnterior)
-        {
-            wheelchairSounds.IniciarMovimento(modoInterior);
-        }
-        else if (estaMovendoAgora && estavaMoverAnterior)
-        {
-            // Atualizar modo se mudou durante movimento
-            wheelchairSounds.IniciarMovimento(modoInterior);
-        }
-        // Se parou
-        else if (!estaMovendoAgora && estavaMoverAnterior)
-        {
-            wheelchairSounds.PararMovimento();
-        }
-
-        estavaMoverAnterior = estaMovendoAgora;
     }
 
     void GerirModos()
     {
-        // Tecla 1: Modo Interior (Lento)
+        // Tecla 1: Modo Lento
         if (Input.GetKeyDown(KeyCode.Alpha1))
         {
-<<<<<<< HEAD
-            modoAtual = ModosVelocidade.Interior;
-            Debug.Log("Modo: INTERIOR (Lento) - 3 km/h");
-            
-            // Tocar som de clique
-            if (wheelchairSounds != null)
-            {
-                wheelchairSounds.TocarClique();
-            }
-=======
             modoAtual = ModosVelocidade.Lento;
             Debug.Log("Modo: LENTO (Interior) - 3 km/h");
             TocarSom(somMudarModo); // --- TOCAR SOM ---
->>>>>>> 0f5d384b36807a6e373ab80d0228edf93def16bd
         }
-        // Tecla 2: Modo Exterior (Normal)
+        // Tecla 2: Modo Normal
         else if (Input.GetKeyDown(KeyCode.Alpha2))
         {
-<<<<<<< HEAD
-            modoAtual = ModosVelocidade.Exterior;
-            Debug.Log("Modo: EXTERIOR (Normal) - 6 km/h");
-            
-            // Tocar som de clique
-            if (wheelchairSounds != null)
-            {
-                wheelchairSounds.TocarClique();
-            }
-=======
             modoAtual = ModosVelocidade.Normal;
             Debug.Log("Modo: NORMAL - 6 km/h");
             TocarSom(somMudarModo); // --- TOCAR SOM ---
->>>>>>> 0f5d384b36807a6e373ab80d0228edf93def16bd
         }
         // Espaço: Travão de emergência
         else if (Input.GetKeyDown(KeyCode.Space))
@@ -335,10 +253,10 @@ public class Movement : MonoBehaviour
             travaoDeEmergencia = true;
             Debug.Log("TRAVÃO DE EMERGÊNCIA ATIVADO!");
         }
-        // Soltar espaço: Voltar ao modo Exterior
+        // Soltar espaço: Voltar ao modo normal
         else if (Input.GetKeyUp(KeyCode.Space))
         {
-            modoAtual = ModosVelocidade.Exterior;
+            modoAtual = ModosVelocidade.Normal;
             travaoDeEmergencia = false;
         }
     }
@@ -358,13 +276,8 @@ public class Movement : MonoBehaviour
         inputHorizontalSuavizado = Mathf.Lerp(inputHorizontalSuavizado, inputHorizontal, suavizacao * Time.deltaTime);
 
         // Determinar velocidade máxima baseada no modo
-<<<<<<< HEAD
-        float velocidadeMaxima = modoAtual == ModosVelocidade.Interior ?
-                                velocidadeMaximaInterior : velocidadeMaximaExterior;
-=======
         float velocidadeMaxima = modoAtual == ModosVelocidade.Lento ?
                                  velocidadeMaximaLenta : velocidadeMaximaNormal;
->>>>>>> 0f5d384b36807a6e373ab80d0228edf93def16bd
 
         // === SISTEMA DE BLOQUEIO REALISTA ===
 
@@ -463,7 +376,7 @@ public class Movement : MonoBehaviour
             else
             {
                 tentandoVirarParado = false;
-                float velocidadeNormalizada = Mathf.Abs(velocidadeAtual) / velocidadeMaximaExterior;
+                float velocidadeNormalizada = Mathf.Abs(velocidadeAtual) / velocidadeMaximaNormal;
                 float eficienciaBase = Mathf.Lerp(0.2f, 1f, velocidadeNormalizada);
                 multiplicadorRotacao *= eficienciaBase;
 
@@ -494,7 +407,7 @@ public class Movement : MonoBehaviour
             }
             else
             {
-                float velocidadeNormalizada = Mathf.Abs(velocidadeAtual) / velocidadeMaximaExterior;
+                float velocidadeNormalizada = Mathf.Abs(velocidadeAtual) / velocidadeMaximaNormal;
                 multiplicadorRotacao *= (1f + velocidadeNormalizada * 0.2f);
                 eficienciaRotacao = 100f;
             }
@@ -574,7 +487,7 @@ public class Movement : MonoBehaviour
 
     public float GetVelocidadeNormalizada()
     {
-        return velocidadeAtual / velocidadeMaximaExterior;
+        return velocidadeAtual / velocidadeMaximaNormal;
     }
 
     public bool EstaEmMovimento()
@@ -615,7 +528,7 @@ public class Movement : MonoBehaviour
         GUI.color = Color.white;
         GUI.Label(new Rect(15, 105, 240, 20), "=== CADEIRA DE RODAS ===");
         GUI.Label(new Rect(15, 125, 240, 20), $"Modo: {modoAtual}");
-        GUI.Label(new Rect(15, 145, 240, 20), $"Velocidade: {(velocidadeAtual * 3.6f):F1} / {(modoAtual == ModosVelocidade.Interior ? 3 : 6)} km/h");
+        GUI.Label(new Rect(15, 145, 240, 20), $"Velocidade: {(velocidadeAtual * 3.6f):F1} / {(modoAtual == ModosVelocidade.Lento ? 3 : 6)} km/h");
         string direcaoSimples = tipoDirecaoAtual.Contains("Traseira") ? "Traseira" : "Frontal";
         GUI.Label(new Rect(15, 165, 240, 20), $"Direção: {direcaoSimples}");
 
@@ -652,7 +565,7 @@ public class Movement : MonoBehaviour
         GUI.color = Color.white;
         GUI.Label(new Rect(15, yPosControlos + 5, 240, 20), "=== CONTROLOS ===");
         GUI.Label(new Rect(15, yPosControlos + 25, 240, 20), "WASD/Setas - Mover");
-        GUI.Label(new Rect(15, yPosControlos + 42, 240, 20), "1/2 - Modo Interior/Exterior");
+        GUI.Label(new Rect(15, yPosControlos + 42, 240, 20), "1/2 - Modo Lento/Normal");
         GUI.Label(new Rect(15, yPosControlos + 59, 240, 20), "T - Alternar direção");
         GUI.Label(new Rect(15, yPosControlos + 76, 240, 20), "ESPAÇO - Travão");
     }
