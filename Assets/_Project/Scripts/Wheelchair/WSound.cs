@@ -5,7 +5,7 @@ using System.Collections; // Precisamos disto para as Corrotinas
 [RequireComponent(typeof(AudioSource))] 
 public class WSound : MonoBehaviour
 {
-    [Header("Referências dos Audio Sources")]
+    [Header("Referências dos Sons do Motor")]
     [Tooltip("O AudioSource que tem o som de ARRANQUE (toca 1 vez)")]
     public AudioSource audioArranque;
 
@@ -19,7 +19,7 @@ public class WSound : MonoBehaviour
     [Header("Referências")]
     private Movement movementController;
 
-    // Estado
+    // Variáveis de Estado
     private bool somArranqueTocou = false;
     private bool estaAcelerandoCache = false; // Guarda o estado anterior do INPUT
     
@@ -33,7 +33,7 @@ public class WSound : MonoBehaviour
 
         if (audioArranque == null || audioMovimento == null)
         {
-            Debug.LogError("Os Audio Sources não foram definidos no WSound!");
+            Debug.LogError("Os Audio Sources (Arranque, Movimento) não foram definidos no WSound!");
             return; 
         }
         
@@ -43,7 +43,7 @@ public class WSound : MonoBehaviour
 
     void Update()
     {
-        // Lemos a variável pública do Movement.cs que regista o INPUT
+        // Lê a variável pública do Movement.cs que regista o INPUT
         bool estaAcelerandoAgora = movementController.jogadorEstaAcelerando;
 
         // CASO 1: O jogador COMEÇOU a acelerar
@@ -132,7 +132,7 @@ public class WSound : MonoBehaviour
         audioSource.Stop();
         
         // Restaura o volume original para a próxima vez que tocar
-        audioSource.volume = volumeInicial; 
+        audioSource.volume = volumeOriginalMovimento; 
         fadeOutCoroutine = null; // Limpa a referência da corrotina
     }
 }
