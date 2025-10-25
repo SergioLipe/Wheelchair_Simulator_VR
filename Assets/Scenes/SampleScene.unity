@@ -4392,7 +4392,7 @@ MonoBehaviour:
   somMudarModo: {fileID: 8300000, guid: 58f1d424e08dec74fbde134e66fa04b3, type: 3}
   somMudarDirecao: {fileID: 8300000, guid: 58f1d424e08dec74fbde134e66fa04b3, type: 3}
   somColisaoForte: {fileID: 8300000, guid: 5dd604ae86442224b81d68474a7c6451, type: 3}
-  somDeslizarInicio: {fileID: 0}
+  somDeslizarInicio: {fileID: 8300000, guid: 8297ce1aea3f7d9459b8818f4f108e00, type: 3}
   velMinimaColisao: 0.8
   inclinacaoMaxima: 10
   gravidade: -9.81
