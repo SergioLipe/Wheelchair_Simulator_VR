@@ -11,16 +11,29 @@ public class Movement : MonoBehaviour
     [Header("=== Configurações de Velocidade ===")]
     [Tooltip("Velocidade máxima em modo normal (km/h)")]
     public float velocidadeMaximaNormal = 6f;
-    // ... (O resto das tuas variáveis de velocidade, aceleração, rotação) ...
+
+    [Tooltip("Velocidade máxima em modo lento/interior (km/h)")]
     public float velocidadeMaximaLenta = 3f;
+
+    [Tooltip("Velocidade de marcha-atrás (km/h)")]
     public float velocidadeMarchaAtras = 2f;
+
     [Header("=== Configurações de Aceleração ===")]
+    [Tooltip("Tempo para atingir velocidade máxima (segundos)")]
     public float tempoAceleracao = 2f;
+
+    [Tooltip("Tempo para parar completamente (segundos)")]
     public float tempoTravagem = 1.5f;
+
     [Header("=== Configurações de Rotação ===")]
+    [Tooltip("Velocidade de rotação (graus por segundo)")]
     public float velocidadeRotacao = 45f;
+
+    [Tooltip("Pode rodar sem se mover para frente/trás? (Só funciona com direção frontal)")]
     public bool rotacaoNoLugar = false;
+
     [Header("=== Modos de Condução ===")]
+    [Tooltip("Modo atual de velocidade")]
     public ModosVelocidade modoAtual = ModosVelocidade.Normal;
 
     // --- NOVA SECÇÃO DE SONS ---
@@ -40,20 +53,19 @@ public class Movement : MonoBehaviour
     [Tooltip("Som a tocar quando começa a deslizar numa parede")]
     public AudioClip somDeslizarInicio;
 
-    [Tooltip("Velocidade mínima (em m/s) para o som de colisão tocar")]
+    [Tooltip("Velocidade mínima (em m/s) para o som de colisão tocar (opcional)")]
     public float velMinimaColisao = 0.8f;
     // --- FIM DA NOVA SECÇÃO ---
-
 
     [Header("=== Física e Limites ===")]
     [Tooltip("Inclinação máxima que consegue subir (graus)")]
     public float inclinacaoMaxima = 10f;
+
     [Tooltip("Gravidade aplicada")]
     public float gravidade = -9.81f;
 
     [Header("=== Estado Atual (Debug) ===")]
     [SerializeField] private float velocidadeAtual = 0f;
-    // ... (O resto das tuas variáveis de estado) ...
     [SerializeField] private float velocidadeDesejada = 0f;
     [SerializeField] private bool travaoDeEmergencia = false;
     [SerializeField] private string tipoDirecaoAtual = "Frontal";
@@ -63,6 +75,8 @@ public class Movement : MonoBehaviour
     private CharacterController controller;
     private Vector3 movimentoVelocidade;
     private WheelController wheelController;
+
+    // Sistema de colisão (separado)
     private CollisionSystem sistemaColisao;
 
     // Sistema de input suavizado
@@ -73,13 +87,14 @@ public class Movement : MonoBehaviour
     private bool tentandoVirarParado = false;
     private float tempoTentandoVirar = 0f;
 
-    // Variável pública para o script de som (WSound) saber se o jogador está a acelerar
-    [HideInInspector]
+    // Variável pública para o script de som saber se o jogador está a acelerar
+    [HideInInspector] // Esconde do Inspetor, mas é pública
     public bool jogadorEstaAcelerando = false;
 
     // Cache para sons (para não repetir)
     private bool estaDeslizandoCache = false;
     private string tipoDirecaoCache = "Frontal";
+    private bool estaEmColisaoCache = false;
 
 
     public enum ModosVelocidade
@@ -100,12 +115,12 @@ public class Movement : MonoBehaviour
 
         // === VALORES ABSOLUTOS MÍNIMOS ===
         controller.height = 1.4f;
-        controller.radius = 0.2f;
+        controller.radius = 0.2f;  // 20cm - MÍNIMO para não atravessar paredes
         controller.center = new Vector3(0, 0.7f, 0);
 
         // === SkinWidth ZERO (ou quase) ===
-        controller.skinWidth = 0.0001f;
-        controller.minMoveDistance = 0.0f;
+        controller.skinWidth = 0.0001f;  // 0.1mm - PRATICAMENTE ZERO!
+        controller.minMoveDistance = 0.0f;  // ZERO absoluto
         controller.stepOffset = 0.1f;
 
         // Elevar um pouco no início
@@ -154,6 +169,7 @@ public class Movement : MonoBehaviour
         // === ATUALIZAR SISTEMA DE COLISÃO ===
         sistemaColisao.Atualizar();
 
+
         // --- LÓGICA DE SOM (DESLIZAR) ---
         bool aDeslizarAgora = sistemaColisao.EstaDeslizandoParede;
         if (aDeslizarAgora && !estaDeslizandoCache)
@@ -161,7 +177,32 @@ public class Movement : MonoBehaviour
             TocarSom(somDeslizarInicio); // Toca só no início do deslize
         }
         estaDeslizandoCache = aDeslizarAgora; // Atualiza o cache
+
+
+        // --- LÓGICA DE SOM (COLISÃO) ---
+        // 1. Definir o que é "Estar em Colisão"
+        bool emColisaoAgora = (sistemaColisao.EstaEmColisao || sistemaColisao.EstaBloqueadoFrente || sistemaColisao.EstaBloqueadoTras);
+        
+        // 2. O deslize tem prioridade (para não tocar os dois sons ao mesmo tempo)
+        if (aDeslizarAgora)
+        {
+            emColisaoAgora = false;
+        }
+
+        // 3. Tocar o som APENAS NO FRAME em que o estado muda
+        if (emColisaoAgora && !estaEmColisaoCache)
+        {
+            // Opcional: Filtro de velocidade (se não quiseres som ao "encostar")
+            // if (Mathf.Abs(velocidadeAtual) > velMinimaColisao)
+            // {
+                 TocarSom(somColisaoForte);
+            // }
+        }
+        
+        // 4. Atualizar o cache de colisão para o próximo frame
+        estaEmColisaoCache = emColisaoAgora;
         // --- FIM DA LÓGICA ---
+
 
         // Atualizar temporizador do aviso de direção traseira
         if (tempoTentandoVirar > 0)
@@ -227,7 +268,6 @@ public class Movement : MonoBehaviour
         float inputHorizontal = Input.GetAxis("Horizontal");
 
         // Verifica se o input (antes de ser suavizado) é significativo
-        // Esta linha é ESSENCIAL para o WSound.cs funcionar
         jogadorEstaAcelerando = (Mathf.Abs(inputVertical) > 0.1f);
 
         // Suavizar o input
@@ -413,7 +453,7 @@ public class Movement : MonoBehaviour
             // Gravidade normal quando no ar
             movimentoVelocidade.y += gravidade * Time.deltaTime;
 
-            //  Limitar velocidade máxima de queda (evita bugs)
+            //  Limitar velocidade máxima de queda (evita bugs)
             movimentoVelocidade.y = Mathf.Max(movimentoVelocidade.y, -20f);
         }
     }
@@ -438,18 +478,8 @@ public class Movement : MonoBehaviour
     /// </summary>
     void OnControllerColliderHit(ControllerColliderHit hit)
     {
-        // --- LÓGICA DE SOM (COLISÃO) ---
-        // Se a velocidade for superior ao mínimo E não estivermos a deslizar
-        if (Mathf.Abs(velocidadeAtual) > velMinimaColisao && !sistemaColisao.EstaDeslizandoParede)
-        {
-            // Toca apenas se a colisão for frontal ou traseira (não no chão)
-            if (hit.normal.y < 0.3f)
-            {
-                TocarSom(somColisaoForte);
-            }
-        }
-        // --- FIM DA LÓGICA ---
-
+        // A lógica de som foi movida para o Update() para
+        // detetar apenas a *mudança* de estado.
         sistemaColisao.ProcessarColisao(hit, velocidadeAtual, ref velocidadeAtual);
     }
 
