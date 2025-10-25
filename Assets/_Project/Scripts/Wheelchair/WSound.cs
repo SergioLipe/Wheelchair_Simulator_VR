@@ -5,7 +5,7 @@ using System.Collections; // Precisamos disto para as Corrotinas
 [RequireComponent(typeof(AudioSource))] 
 public class WSound : MonoBehaviour
 {
-    [Header("Referências dos Sons do Motor")]
+    [Header("Referências dos Audio Sources")]
     [Tooltip("O AudioSource que tem o som de ARRANQUE (toca 1 vez)")]
     public AudioSource audioArranque;
 
@@ -19,7 +19,7 @@ public class WSound : MonoBehaviour
     [Header("Referências")]
     private Movement movementController;
 
-    // Variáveis de Estado
+    // Estado
     private bool somArranqueTocou = false;
     private bool estaAcelerandoCache = false; // Guarda o estado anterior do INPUT
     
@@ -43,7 +43,7 @@ public class WSound : MonoBehaviour
 
     void Update()
     {
-        // Lê a variável pública do Movement.cs que regista o INPUT
+        // Lemos a variável pública do Movement.cs que regista o INPUT
         bool estaAcelerandoAgora = movementController.jogadorEstaAcelerando;
 
         // CASO 1: O jogador COMEÇOU a acelerar
@@ -83,16 +83,20 @@ public class WSound : MonoBehaviour
             fadeOutCoroutine = null;
         }
 
-        // Para o som de arranque imediatamente (o arranque não precisa de fade)
+        // --- CORREÇÃO IMPORTANTE ---
+        // Para garantir que o som de loop (que podia estar em fade out)
+        // para IMEDIATAMENTE antes de o arranque começar.
+        audioMovimento.Stop(); 
+        // --- FIM DA CORREÇÃO ---
+
+        // Restaura o volume do som de movimento (caso tenha sido
+        // alterado pelo fade out)
+        audioMovimento.volume = volumeOriginalMovimento; 
+
+        // Para o som de arranque (para o caso de estar a tocar) e recomeça-o
         audioArranque.Stop();
-        
-        // Toca o som de arranque
         audioArranque.Play();
         somArranqueTocou = true;
-
-        // Garante que o volume do som de movimento está no máximo,
-        // pronto para quando o arranque acabar.
-        audioMovimento.volume = volumeOriginalMovimento; 
     }
 
     private void PararSons()
