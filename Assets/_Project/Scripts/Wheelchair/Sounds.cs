@@ -54,7 +54,6 @@ public class Sounds : MonoBehaviour
     
     [Header("Debug")]
     [SerializeField] private bool isAccelerating = false;
-    [SerializeField] private bool startupStarted = false;
     [SerializeField] private bool loopStarted = false;
     [SerializeField] private float acceleratingTime = 0f;
 
@@ -149,7 +148,6 @@ public class Sounds : MonoBehaviour
     {
         isAccelerating = true;
         acceleratingTime = 0f;
-        startupStarted = true;
         loopStarted = false;
         
         if (startupSound != null && effectsAudioSource != null)
@@ -164,7 +162,6 @@ public class Sounds : MonoBehaviour
     private void StopAcceleration()
     {
         isAccelerating = false;
-        startupStarted = false;
         loopStarted = false;
         acceleratingTime = 0f;
     }

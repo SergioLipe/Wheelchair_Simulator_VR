@@ -146,7 +146,11 @@ public class WheelController : MonoBehaviour
         
         if (wheelchairSounds == null)
         {
+            #if UNITY_2023_1_OR_NEWER
+            wheelchairSounds = FindFirstObjectByType<Sounds>();
+            #else
             wheelchairSounds = FindObjectOfType<Sounds>();
+            #endif
         }
     }
 

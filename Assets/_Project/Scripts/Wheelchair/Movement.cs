@@ -80,7 +80,6 @@ public class Movement : MonoBehaviour
     private float smoothedHorizontalInput = 0f;
 
     // Rear steering - feedback
-    private bool tryingToTurnStationary = false;
     private float tryingToTurnTime = 0f;
 
     // Public variable for sound script to know if player is accelerating
@@ -433,7 +432,6 @@ public class Movement : MonoBehaviour
 
             if (Mathf.Abs(horizontalInput) > 0.1f)
             {
-                tryingToTurnStationary = true;
                 tryingToTurnTime = 1f;
             }
 
@@ -441,7 +439,6 @@ public class Movement : MonoBehaviour
         }
         else
         {
-            tryingToTurnStationary = false;
             float normalizedSpeed = Mathf.Abs(currentSpeed) / maxSpeedNormal;
             float baseEfficiency = Mathf.Lerp(0.2f, 1f, normalizedSpeed);
             multiplier *= baseEfficiency;
@@ -464,8 +461,6 @@ public class Movement : MonoBehaviour
     /// </summary>
     private void ProcessFrontRotation(bool isStationary, ref float multiplier)
     {
-        tryingToTurnStationary = false;
-
         if (isStationary && !rotationInPlace)
         {
             // No rotation when stationary (unless rotationInPlace is active)
