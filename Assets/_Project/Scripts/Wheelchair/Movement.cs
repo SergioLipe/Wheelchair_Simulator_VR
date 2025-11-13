@@ -118,12 +118,12 @@ public class Movement : MonoBehaviour
         }
 
         // Optimized values for realistic obstacle contact
-        controller.height = 1.4f;
-        controller.radius = 0.2f;
-        controller.center = new Vector3(0, 0.7f, 0);
+        controller.height = 0.8f;     
+        controller.radius = 0.17f;    
+        controller.center = new Vector3(0, 0.4f, 0);  
         controller.skinWidth = 0.0001f;
         controller.minMoveDistance = 0.0f;
-        controller.stepOffset = 0.1f;
+        controller.stepOffset = 0.08f; 
 
         // Slightly elevate at start to avoid floor collision
         transform.position += Vector3.up * 0.1f;
@@ -220,8 +220,8 @@ public class Movement : MonoBehaviour
         slidingCache = slidingNow;
 
         // Collision sound (sliding has priority)
-        bool inCollisionNow = (collisionSystem.IsInCollision || 
-                               collisionSystem.IsFrontBlocked || 
+        bool inCollisionNow = (collisionSystem.IsInCollision ||
+                               collisionSystem.IsFrontBlocked ||
                                collisionSystem.IsBackBlocked);
 
         if (slidingNow)

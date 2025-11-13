@@ -10228,12 +10228,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 973da83c6a9851c41a697d609b9dece0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  joint4_FrontSteering: {fileID: 0}
-  joint5_RearSteering: {fileID: 0}
-  joint6_FrontLeftWheel: {fileID: 0}
-  joint7_FrontRightWheel: {fileID: 0}
-  joint8_RearLeftWheel: {fileID: 0}
-  joint9_RearRightWheel: {fileID: 0}
+  joint4_FrontSteering: {fileID: 4134514114303121782}
+  joint5_RearSteering: {fileID: 7899683716547817637}
+  joint6_FrontLeftWheel: {fileID: 9133660520671788735}
+  joint7_FrontRightWheel: {fileID: 5655451170938459240}
+  joint8_RearLeftWheel: {fileID: 215855436522093740}
+  joint9_RearRightWheel: {fileID: 5326480115257143847}
   steeringType: 0
   toggleSteeringKey: 116
   maxSpeedKmH: 6
