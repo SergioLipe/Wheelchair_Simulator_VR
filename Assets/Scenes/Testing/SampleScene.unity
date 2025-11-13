@@ -1047,6 +1047,26 @@ PrefabInstance:
       propertyPath: m_LocalRotation.x
       value: 0.46890125
       objectReference: {fileID: 0}
+    - target: {fileID: 5335227114178252830, guid: 96a5d4c3b1e71b5468d62f0443a44440, type: 3}
+      propertyPath: effectsAudio
+      value: 
+      objectReference: {fileID: 452820834}
+    - target: {fileID: 5335227114178252830, guid: 96a5d4c3b1e71b5468d62f0443a44440, type: 3}
+      propertyPath: modeChangeSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 58f1d424e08dec74fbde134e66fa04b3, type: 3}
+    - target: {fileID: 5335227114178252830, guid: 96a5d4c3b1e71b5468d62f0443a44440, type: 3}
+      propertyPath: slideStartSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 8297ce1aea3f7d9459b8818f4f108e00, type: 3}
+    - target: {fileID: 5335227114178252830, guid: 96a5d4c3b1e71b5468d62f0443a44440, type: 3}
+      propertyPath: hardCollisionSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 5dd604ae86442224b81d68474a7c6451, type: 3}
+    - target: {fileID: 5335227114178252830, guid: 96a5d4c3b1e71b5468d62f0443a44440, type: 3}
+      propertyPath: steeringChangeSound
+      value: 
+      objectReference: {fileID: 8300000, guid: 58f1d424e08dec74fbde134e66fa04b3, type: 3}
     - target: {fileID: 5820751688408988015, guid: 96a5d4c3b1e71b5468d62f0443a44440, type: 3}
       propertyPath: m_LocalRotation.w
       value: 0.8273062
