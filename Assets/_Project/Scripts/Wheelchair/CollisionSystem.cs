@@ -1,449 +1,205 @@
 using UnityEngine;
-using System.Collections;
 
 /// <summary>
-/// Sistema de deteção e gestão de colisões para a cadeira de rodas
-/// Responsável por: deteção de obstáculos, bloqueios direcionais, deslizamento em paredes
+/// Collision detection and management system for the wheelchair
+/// Processes CharacterController collisions and manages directional blocking and wall sliding
 /// </summary>
 public class CollisionSystem : MonoBehaviour
 {
-    [Header("=== Sistema de Colisão ===")]
-    [Tooltip("Ativar sistema de deteção de colisões")]
-    public bool avisosColisaoAtivos = true;
+    [Header("=== Collision State (Debug) ===")]
+    [SerializeField] private bool inCollision = false;
+    [SerializeField] private string collidedObject = "";
+    [SerializeField] private bool frontBlocked = false;
+    [SerializeField] private bool backBlocked = false;
+    [SerializeField] private bool wallSliding = false;
 
-    [Tooltip("Distância para deteção de obstáculos")]
-    public float distanciaAviso = 1.0f;
-
-    [Tooltip("Distância REAL para bloqueio (metros) - quão perto pode chegar")]
-    [Range(0.001f, 0.03f)]
-    public float distanciaBloqueio = 0.008f;  
-
-    [Tooltip("Mostrar raios de debug na Scene View")]
-    public bool mostrarDebugRaios = true;
-
-    [Header("=== Configuração Física ===")]
-    [Tooltip("Confiar principalmente nas colisões físicas do CharacterController?")]
-    public bool usarColisaoFisica = true;
-
-    [Header("=== Estado de Colisão (Debug) ===")]
-    [SerializeField] private bool emColisao = false;
-    [SerializeField] private string objetoColidido = "";
-    [SerializeField] private float distanciaObstaculo = 999f;
-    [SerializeField] private bool bloqueadoFrente = false;
-    [SerializeField] private bool bloqueadoTras = false;
-
-    // Componentes externos (injetados)
+    // External components
     private CharacterController controller;
-    private Transform transformCadeira;
+    private Transform wheelchairTransform;
     private CollisionFlashEffect flashEffect;
 
-    // Variáveis de colisão
-    private Vector3 normalColisao = Vector3.zero;
-    private Vector3 pontoColisao = Vector3.zero;
-    private float tempoColisao = 0f;
-    private float ultimoTempoColisao = 0f;
-    private bool avisoProximidade = false;
+    // Collision variables
+    private Vector3 collisionNormal = Vector3.zero;
+    private Vector3 collisionPoint = Vector3.zero;
+    private float collisionTime = 0f;
+    private float lastCollisionTime = 0f;
 
-    // Sistema de bloqueio direcional
-    private Vector3 direcaoBloqueada = Vector3.zero;
-    private float tempoBloqueio = 0f;
-    private const float duracaoBloqueio = 0.2f;
+    // Directional blocking system
+    private float blockingTime = 0f;
+    private const float blockingDuration = 0.2f;
 
-    // Sistema de deslizamento em paredes
-    private bool deslizaParede = false;
-    private Vector3 direcaoDeslize = Vector3.zero;
+    // Wall sliding system
+    private Vector3 slideDirection = Vector3.zero;
 
     /// <summary>
-    /// Inicializar o sistema de colisão com as referências necessárias
+    /// Initialize collision system with necessary references
     /// </summary>
-    public void Inicializar(CharacterController characterController, Transform transform)
+    public void Initialize(CharacterController characterController, Transform transform)
     {
         this.controller = characterController;
-        this.transformCadeira = transform;
+        this.wheelchairTransform = transform;
 
-        // Obter ou criar o componente de flash
+        // Get or create flash component
         flashEffect = GetComponent<CollisionFlashEffect>();
         if (flashEffect == null)
         {
             flashEffect = gameObject.AddComponent<CollisionFlashEffect>();
-            Debug.Log("✅ CollisionFlashEffect criado automaticamente");
         }
-
-        Debug.Log("✅ Sistema de Colisão inicializado!");
-        Debug.Log($"📏 Distância de bloqueio: {distanciaBloqueio}m ({distanciaBloqueio * 100}cm)");
-        Debug.Log($"🎯 Modo: {(usarColisaoFisica ? "Colisão Física REAL" : "Raycasts Preventivos")}");
     }
 
     /// <summary>
-    /// Atualizar o sistema de colisão (chamar no Update)
+    /// Update collision system
     /// </summary>
-    public void Atualizar()
+    public void Update()
     {
-        // Se usar colisão física, APENAS mostrar raios visuais, NÃO bloquear
-        if (usarColisaoFisica)
+        UpdateBlockingTimer();
+        UpdateCollisionReset();
+    }
+
+    /// <summary>
+    /// Updates blocking timer and clears blocks when expired
+    /// </summary>
+    private void UpdateBlockingTimer()
+    {
+        if (blockingTime > 0)
         {
-            if (mostrarDebugRaios)
+            blockingTime -= Time.deltaTime;
+            if (blockingTime <= 0)
             {
-                VerificarObstaculosVisual();
+                frontBlocked = false;
+                backBlocked = false;
             }
+        }
+    }
+
+    /// <summary>
+    /// Automatically resets collision state after timeout
+    /// </summary>
+    private void UpdateCollisionReset()
+    {
+        if (inCollision && Time.time - collisionTime > 0.5f)
+        {
+            inCollision = false;
+            collidedObject = "";
+            wallSliding = false;
+        }
+    }
+
+    /// <summary>
+    /// Process CharacterController collisions
+    /// </summary>
+    public void ProcessCollision(ControllerColliderHit hit, float currentSpeed, ref float currentSpeedRef)
+    {
+        // Ignore floor
+        if (IsFloorObject(hit.gameObject.name))
+            return;
+
+        // Avoid multiple detections
+        if (Time.time - lastCollisionTime < 0.1f) 
+            return;
+
+        // Determine collision direction
+        Vector3 dirToObstacle = (hit.point - wheelchairTransform.position);
+        dirToObstacle.y = 0;
+        dirToObstacle.Normalize();
+
+        float angle = Vector3.Angle(wheelchairTransform.forward, dirToObstacle);
+
+        // Process collision based on angle
+        if (angle < 60f)
+        {
+            ProcessFrontCollision(currentSpeedRef);
+        }
+        else if (angle > 120f)
+        {
+            ProcessBackCollision(currentSpeedRef);
         }
         else
         {
-            // Modo antigo: usar raycasts para bloquear
-            if (avisosColisaoAtivos)
-            {
-                VerificarObstaculosCompleto();
-            }
+            ProcessSideCollision(hit, dirToObstacle);
         }
 
-        // Atualizar temporizador de bloqueio
-        if (tempoBloqueio > 0)
-        {
-            tempoBloqueio -= Time.deltaTime;
-            if (tempoBloqueio <= 0)
-            {
-                direcaoBloqueada = Vector3.zero;
-                bloqueadoFrente = false;
-                bloqueadoTras = false;
-            }
-        }
-
-        // Reset automático da colisão após 0.5 segundos
-        if (emColisao && Time.time - tempoColisao > 0.5f)
-        {
-            emColisao = false;
-            objetoColidido = "";
-            deslizaParede = false;
-        }
+        // Update collision state
+        inCollision = true;
+        collidedObject = hit.gameObject.name;
+        collisionPoint = hit.point;
+        collisionTime = Time.time;
+        lastCollisionTime = Time.time;
+        blockingTime = blockingDuration;
     }
 
     /// <summary>
-    /// Verificar se pode mover para uma determinada posição
+    /// Processes front collision
     /// </summary>
-    public bool PodeMoverPara(Vector3 posicao)
+    private void ProcessFrontCollision(float currentSpeedRef)
     {
-        // Se usar colisão física, SEMPRE permite - CharacterController decide
-        if (usarColisaoFisica)
-        {
-            return true;
-        }
-
-        Vector3 origem = transformCadeira.position + Vector3.up * 0.5f;
-        Vector3 direcao = (posicao - transformCadeira.position).normalized;
-        float distancia = Vector3.Distance(transformCadeira.position, posicao);
-
-        RaycastHit hit;
-        if (Physics.Raycast(origem, direcao, out hit, distancia + 0.02f))
-        {
-            // Ignorar chão
-            if (hit.collider.name.ToLower().Contains("plane") ||
-                hit.collider.name.ToLower().Contains("ground") ||
-                hit.collider.name.ToLower().Contains("floor"))
-            {
-                return true;
-            }
-            return false;
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// Verificar obstáculos apenas para VISUALIZAÇÃO (não bloqueia)
-    /// </summary>
-    void VerificarObstaculosVisual()
-    {
-        Vector3 centroController = transformCadeira.position + Vector3.up * 0.7f;
+        frontBlocked = true;
+        currentSpeedRef = 0;
         
-        avisoProximidade = false;
-        float menorDist = 999f;
+        if (flashEffect != null)
+            flashEffect.FrontFlash();
+    }
 
-        // Raios frontais para visualização
-        for (float offsetY = 0.3f; offsetY <= 0.9f; offsetY += 0.3f)
+    /// <summary>
+    /// Processes back collision
+    /// </summary>
+    private void ProcessBackCollision(float currentSpeedRef)
+    {
+        backBlocked = true;
+        currentSpeedRef = 0;
+        
+        if (flashEffect != null)
+            flashEffect.BackFlash();
+    }
+
+    /// <summary>
+    /// Processes side collision and calculates slide direction
+    /// </summary>
+    private void ProcessSideCollision(ControllerColliderHit hit, Vector3 dirToObstacle)
+    {
+        collisionNormal = hit.normal;
+        
+        // Calculate tangential slide direction using vector projection
+        Vector3 projection = Vector3.Project(wheelchairTransform.forward, collisionNormal);
+        slideDirection = (wheelchairTransform.forward - projection).normalized;
+        wallSliding = true;
+
+        // Determine if left or right side
+        float side = Vector3.Dot(wheelchairTransform.right, dirToObstacle);
+        
+        if (flashEffect != null)
         {
-            Vector3 origemLocal = centroController;
-            origemLocal.y = transformCadeira.position.y + offsetY;
-            
-            Vector3 origemRaio = origemLocal + transformCadeira.forward * controller.radius;
-            
-            RaycastHit hit;
-
-            if (Physics.Raycast(origemRaio, transformCadeira.forward, out hit, distanciaAviso))
-            {
-                string nomeObjeto = hit.collider.name.ToLower();
-                if (nomeObjeto.Contains("plane") || nomeObjeto.Contains("ground") || nomeObjeto.Contains("floor"))
-                    continue;
-
-                float dist = hit.distance;
-
-                if (dist < menorDist)
-                {
-                    menorDist = dist;
-                    avisoProximidade = true;
-                }
-
-                Color corRaio = dist < 0.05f ? Color.red : 
-                               (dist < 0.2f ? Color.yellow : Color.green);
-                Debug.DrawRay(origemRaio, transformCadeira.forward * hit.distance, corRaio);
-            }
+            if (side > 0)
+                flashEffect.RightSideFlash();
             else
-            {
-                Debug.DrawRay(origemRaio, transformCadeira.forward * 0.5f, new Color(0.5f, 0.5f, 0.5f, 0.3f));
-            }
-        }
-
-        distanciaObstaculo = menorDist;
-        DesenharCilindroController();
-    }
-
-    /// <summary>
-    /// Sistema completo de verificação de obstáculos em múltiplas direções
-    /// </summary>
-    void VerificarObstaculosCompleto()
-    {
-        Vector3 centroController = transformCadeira.position + Vector3.up * 0.7f;
-        
-        avisoProximidade = false;
-        bloqueadoFrente = false;
-        bloqueadoTras = false;
-        float menorDist = 999f;
-        string objetoMaisProximo = "";
-
-        // === VERIFICAÇÃO FRONTAL ===
-        for (float offsetX = -0.2f; offsetX <= 0.2f; offsetX += 0.1f)
-        {
-            for (float offsetY = 0.2f; offsetY <= 1.0f; offsetY += 0.4f)
-            {
-                Vector3 origemLocal = centroController + transformCadeira.right * offsetX;
-                origemLocal.y = transformCadeira.position.y + offsetY;
-                
-                Vector3 origemRaio = origemLocal + transformCadeira.forward * controller.radius;
-                
-                RaycastHit hit;
-
-                if (Physics.Raycast(origemRaio, transformCadeira.forward, out hit, distanciaAviso))
-                {
-                    string nomeObjeto = hit.collider.name.ToLower();
-                    if (nomeObjeto.Contains("plane") || nomeObjeto.Contains("ground") || nomeObjeto.Contains("floor"))
-                        continue;
-
-                    float dist = hit.distance;
-
-                    // BLOQUEIO quando realmente próximo
-                    if (dist < distanciaBloqueio)
-                    {
-                        bloqueadoFrente = true;
-                        tempoBloqueio = duracaoBloqueio;
-                        normalColisao = hit.normal;
-
-                        Vector3 projecao = Vector3.Project(transformCadeira.forward, hit.normal);
-                        direcaoDeslize = (transformCadeira.forward - projecao).normalized;
-                        deslizaParede = true;
-                    }
-
-                    if (dist < menorDist)
-                    {
-                        menorDist = dist;
-                        objetoMaisProximo = hit.collider.name;
-                        avisoProximidade = true;
-                    }
-
-                    if (mostrarDebugRaios)
-                    {
-                        Color corRaio = dist < distanciaBloqueio ? Color.red : 
-                                       (dist < 0.3f ? Color.yellow : Color.green);
-                        Debug.DrawRay(origemRaio, transformCadeira.forward * hit.distance, corRaio);
-                    }
-                }
-                else if (mostrarDebugRaios)
-                {
-                    Debug.DrawRay(origemRaio, transformCadeira.forward * 0.5f, Color.gray);
-                }
-
-                // === VERIFICAÇÃO TRASEIRA ===
-                Vector3 origemRaioTras = origemLocal - transformCadeira.forward * controller.radius;
-                
-                if (Physics.Raycast(origemRaioTras, -transformCadeira.forward, out hit, distanciaAviso * 0.5f))
-                {
-                    string nomeObjeto = hit.collider.name.ToLower();
-                    if (nomeObjeto.Contains("plane") || nomeObjeto.Contains("ground") || nomeObjeto.Contains("floor"))
-                        continue;
-
-                    if (hit.distance < distanciaBloqueio)
-                    {
-                        bloqueadoTras = true;
-                        tempoBloqueio = duracaoBloqueio;
-                    }
-
-                    if (mostrarDebugRaios)
-                    {
-                        Color corRaio = hit.distance < distanciaBloqueio ? Color.red : Color.magenta;
-                        Debug.DrawRay(origemRaioTras, -transformCadeira.forward * hit.distance, corRaio);
-                    }
-                }
-            }
-        }
-
-        distanciaObstaculo = menorDist;
-        if (avisoProximidade && !emColisao)
-        {
-            objetoColidido = objetoMaisProximo;
-        }
-
-        if (mostrarDebugRaios)
-        {
-            DesenharCilindroController();
+                flashEffect.LeftSideFlash();
         }
     }
 
     /// <summary>
-    /// Desenhar o cilindro do CharacterController na Scene View (debug visual)
+    /// Checks if object name indicates it's a floor/ground
     /// </summary>
-    void DesenharCilindroController()
+    private bool IsFloorObject(string objectName)
     {
-        Vector3 centro = transformCadeira.position + controller.center;
-        float radius = controller.radius;
-        float altura = controller.height;
-
-        Color cor = bloqueadoFrente || bloqueadoTras ? Color.red : Color.green;
-        cor.a = 0.3f;
-
-        // Desenhar círculo superior
-        for (int i = 0; i < 16; i++)
-        {
-            float angulo1 = i * 22.5f * Mathf.Deg2Rad;
-            float angulo2 = (i + 1) * 22.5f * Mathf.Deg2Rad;
-
-            Vector3 p1 = centro + new Vector3(Mathf.Cos(angulo1) * radius, altura/2, Mathf.Sin(angulo1) * radius);
-            Vector3 p2 = centro + new Vector3(Mathf.Cos(angulo2) * radius, altura/2, Mathf.Sin(angulo2) * radius);
-
-            Debug.DrawLine(p1, p2, cor);
-
-            // Círculo inferior
-            Vector3 p3 = centro + new Vector3(Mathf.Cos(angulo1) * radius, -altura/2, Mathf.Sin(angulo1) * radius);
-            Vector3 p4 = centro + new Vector3(Mathf.Cos(angulo2) * radius, -altura/2, Mathf.Sin(angulo2) * radius);
-
-            Debug.DrawLine(p3, p4, cor);
-
-            // Linhas verticais
-            if (i % 4 == 0)
-            {
-                Debug.DrawLine(p1, p3, cor);
-            }
-        }
+        string name = objectName.ToLower();
+        return name.Contains("plane") || name.Contains("ground") || name.Contains("floor");
     }
 
     /// <summary>
-    /// Processar colisões do CharacterController
+    /// Clear wall sliding state
     /// </summary>
-    public void ProcessarColisao(ControllerColliderHit hit, float velocidadeAtual, ref float velocidadeAtualRef)
+    public void ClearSlide()
     {
-        // Ignorar chão
-        string nome = hit.gameObject.name.ToLower();
-        if (nome.Contains("plane") || nome.Contains("ground") || nome.Contains("floor"))
-            return;
-
-        // Evitar múltiplas deteções
-        if (Time.time - ultimoTempoColisao < 0.1f) return;
-
-        // Determinar direção da colisão
-        Vector3 dirParaObstaculo = (hit.point - transformCadeira.position);
-        dirParaObstaculo.y = 0;
-        dirParaObstaculo.Normalize();
-
-        float angulo = Vector3.Angle(transformCadeira.forward, dirParaObstaculo);
-
-        // BLOQUEIO baseado no ângulo + ATIVAR FLASH
-        if (angulo < 60f)  // Colisão frontal
-        {
-            bloqueadoFrente = true;
-            velocidadeAtualRef = 0;
-            
-            // Ativar flash frontal
-            if (flashEffect != null)
-                flashEffect.FlashFrontal();
-            
-            Debug.Log($"💥 COLISÃO FRONTAL com {hit.gameObject.name}");
-        }
-        else if (angulo > 120f)  // Colisão traseira
-        {
-            bloqueadoTras = true;
-            velocidadeAtualRef = 0;
-            
-            // Ativar flash traseiro
-            if (flashEffect != null)
-                flashEffect.FlashTraseiro();
-            
-            Debug.Log($"💥 COLISÃO TRASEIRA com {hit.gameObject.name}");
-        }
-        else  // Colisão lateral
-        {
-            normalColisao = hit.normal;
-            Vector3 projecao = Vector3.Project(transformCadeira.forward, normalColisao);
-            direcaoDeslize = (transformCadeira.forward - projecao).normalized;
-            deslizaParede = true;
-
-            // Determinar se é esquerda ou direita
-            float lado = Vector3.Dot(transformCadeira.right, dirParaObstaculo);
-            
-            // Ativar flash lateral
-            if (flashEffect != null)
-            {
-                if (lado > 0)
-                    flashEffect.FlashLateralDireito();
-                else
-                    flashEffect.FlashLateralEsquerdo();
-            }
-
-            Debug.Log($"💥 COLISÃO LATERAL ({(lado > 0 ? "Direita" : "Esquerda")}) com {hit.gameObject.name}");
-        }
-
-        emColisao = true;
-        objetoColidido = hit.gameObject.name;
-        pontoColisao = hit.point;
-        tempoColisao = Time.time;
-        ultimoTempoColisao = Time.time;
-        tempoBloqueio = duracaoBloqueio;
+        wallSliding = false;
+        slideDirection = Vector3.zero;
     }
 
-    /// <summary>
-    /// Limpar estado de deslizamento em parede
-    /// </summary>
-    public void LimparDeslizamento()
-    {
-        deslizaParede = false;
-        direcaoDeslize = Vector3.zero;
-    }
+    // ===== PUBLIC PROPERTIES =====
 
-    // ===== PROPRIEDADES PÚBLICAS (Getters) =====
-
-    public bool EstaBloqueadoFrente 
-    {
-        get
-        {
-            if (usarColisaoFisica)
-            {
-                return bloqueadoFrente && (Time.time - ultimoTempoColisao < duracaoBloqueio);
-            }
-            return bloqueadoFrente;
-        }
-    }
-
-    public bool EstaBloqueadoTras 
-    {
-        get
-        {
-            if (usarColisaoFisica)
-            {
-                return bloqueadoTras && (Time.time - ultimoTempoColisao < duracaoBloqueio);
-            }
-            return bloqueadoTras;
-        }
-    }
-
-    public bool EstaDeslizandoParede => deslizaParede;
-    public Vector3 DirecaoDeslize => direcaoDeslize;
-    public bool EstaEmColisao => emColisao;
-    public string ObjetoColidido => objetoColidido;
-    public float DistanciaObstaculo => distanciaObstaculo;
+    public bool IsFrontBlocked => frontBlocked && (Time.time - lastCollisionTime < blockingDuration);
+    public bool IsBackBlocked => backBlocked && (Time.time - lastCollisionTime < blockingDuration);
+    public bool IsWallSliding => wallSliding;
+    public Vector3 SlideDirection => slideDirection;
+    public bool IsInCollision => inCollision;
+    public string CollidedObject => collidedObject;
 }

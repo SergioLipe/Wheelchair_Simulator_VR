@@ -1,66 +1,81 @@
 using UnityEngine;
 
 /// <summary>
-/// Sistema de sons ultra-simplificado para cadeira de rodas elétrica
-/// Apenas arranque e loop baseado no input do utilizador
-/// COLOCA ESTE SCRIPT NO GameObject "Wheelchair" 
+/// Ultra-simplified sound system for electric wheelchair
+/// Only startup and loop based on user input
+/// PLACE THIS SCRIPT ON THE "Wheelchair" GameObject
 /// </summary>
 public class Sounds : MonoBehaviour
 {
     [Header("Audio Sources")]
-    [Tooltip("AudioSource para o som do motor (loop contínuo)")]
+    [Tooltip("AudioSource for motor sound (continuous loop)")]
     public AudioSource motorAudioSource;
     
-    [Tooltip("AudioSource para sons pontuais (arranque, cliques, colisões)")]
+    [Tooltip("AudioSource for one-shot sounds (startup, clicks, collisions)")]
     public AudioSource effectsAudioSource;
 
-    [Header("Sons do Motor")]
-    [Tooltip("Som de arranque (2 segundos)")]
-    public AudioClip arranque;
+    [Header("Motor Sounds")]
+    [Tooltip("Startup sound (2 seconds)")]
+    public AudioClip startupSound;
     
-    [Tooltip("Som contínuo do motor (loop)")]
-    public AudioClip loop;
+    [Tooltip("Continuous motor sound (loop)")]
+    public AudioClip loopSound;
 
-    [Header("Som de Interface")]
-    [Tooltip("Som de clique ao mudar modos ou direção")]
-    public AudioClip cliqueSound;
+    [Header("Interface Sound")]
+    [Tooltip("Click sound when changing modes or direction")]
+    public AudioClip clickSound;
 
-    [Header("Sons de Colisão")]
-    [Tooltip("Som de colisão frontal/traseira")]
-    public AudioClip colisaoFrontal;
+    [Header("Collision Sounds")]
+    [Tooltip("Front/rear collision sound")]
+    public AudioClip frontCollisionSound;
     
-    [Tooltip("Som de colisão lateral (deslizar)")]
-    public AudioClip colisaoLateral;
+    [Tooltip("Side collision sound (sliding)")]
+    public AudioClip sideCollisionSound;
     
-    [Tooltip("Velocidade mínima de colisão para tocar som")]
+    [Tooltip("Minimum collision velocity to play sound")]
     public float minCollisionVelocity = 0.5f;
     
-    [Tooltip("Volume das colisões")]
+    [Tooltip("Collision volume")]
     [Range(0f, 1f)]
-    public float volumeColisao = 0.7f;
+    public float collisionVolume = 0.7f;
 
-    [Header("Configurações do Motor")]
-    [Tooltip("Volume do som de arranque")]
+    [Header("Motor Settings")]
+    [Tooltip("Startup sound volume")]
     [Range(0f, 1f)]
-    public float volumeArranque = 0.7f;
+    public float startupVolume = 0.7f;
     
-    [Tooltip("Volume base do motor em loop")]
+    [Tooltip("Base motor loop volume")]
     [Range(0f, 1f)]
-    public float volumeLoop = 0.5f;
+    public float loopVolume = 0.5f;
     
-    [Tooltip("Velocidade do fade out (segundos)")]
+    [Tooltip("Fade out speed (seconds)")]
     [Range(0.5f, 5f)]
     public float fadeOutSpeed = 1f;
     
     [Header("Debug")]
     [SerializeField] private bool isAccelerating = false;
-    [SerializeField] private bool arranqueIniciado = false;
-    [SerializeField] private bool loopIniciado = false;
-    [SerializeField] private float tempoAcelerando = 0f;
+    [SerializeField] private bool startupStarted = false;
+    [SerializeField] private bool loopStarted = false;
+    [SerializeField] private float acceleratingTime = 0f;
 
     void Start()
     {
-        // Configurar AudioSource do motor
+        SetupAudioSources();
+    }
+
+    void Update()
+    {
+        CheckAccelerationInput();
+        UpdateMotorLoop();
+        ApplyFadeOut();
+    }
+
+    /// <summary>
+    /// Configures audio sources with proper settings
+    /// </summary>
+    private void SetupAudioSources()
+    {
+        // Setup motor AudioSource
         if (motorAudioSource == null)
         {
             motorAudioSource = gameObject.AddComponent<AudioSource>();
@@ -69,47 +84,57 @@ public class Sounds : MonoBehaviour
         motorAudioSource.volume = 0f;
         motorAudioSource.playOnAwake = false;
         
-        // Configurar AudioSource dos efeitos
+        // Setup effects AudioSource
         if (effectsAudioSource == null)
         {
             effectsAudioSource = gameObject.AddComponent<AudioSource>();
         }
         effectsAudioSource.loop = false;
         effectsAudioSource.playOnAwake = false;
-        
-        Debug.Log("✅ Sistema de sons inicializado!");
     }
 
-    void Update()
+    /// <summary>
+    /// Checks user input and manages acceleration state
+    /// </summary>
+    private void CheckAccelerationInput()
     {
-        // Verificar se o utilizador está a acelerar (W ou Seta para cima ou S ou Seta para baixo)
-        float inputVertical = Input.GetAxis("Vertical");
-        bool estaAcelerarAgora = Mathf.Abs(inputVertical) > 0.1f;
+        float verticalInput = Input.GetAxis("Vertical");
+        bool acceleratingNow = Mathf.Abs(verticalInput) > 0.1f;
         
-        // Se começou a acelerar
-        if (estaAcelerarAgora && !isAccelerating)
+        // Started accelerating
+        if (acceleratingNow && !isAccelerating)
         {
-            IniciarAceleracao();
+            StartAcceleration();
         }
-        // Se parou de acelerar
-        else if (!estaAcelerarAgora && isAccelerating)
+        // Stopped accelerating
+        else if (!acceleratingNow && isAccelerating)
         {
-            PararAceleracao();
+            StopAcceleration();
         }
-        
-        // Se está a acelerar, contar tempo
+    }
+
+    /// <summary>
+    /// Updates motor loop timing
+    /// </summary>
+    private void UpdateMotorLoop()
+    {
         if (isAccelerating)
         {
-            tempoAcelerando += Time.deltaTime;
+            acceleratingTime += Time.deltaTime;
             
-            // Após 2 segundos, iniciar loop se ainda não iniciou
-            if (tempoAcelerando >= 2f && !loopIniciado)
+            // After 2 seconds, start loop if not started yet
+            if (acceleratingTime >= 2f && !loopStarted)
             {
-                IniciarLoop();
+                StartLoop();
             }
         }
-        
-        // Fazer fade out quando não está a acelerar
+    }
+
+    /// <summary>
+    /// Applies fade out effect when not accelerating
+    /// </summary>
+    private void ApplyFadeOut()
+    {
         if (!isAccelerating && motorAudioSource.volume > 0.01f)
         {
             motorAudioSource.volume = Mathf.Lerp(motorAudioSource.volume, 0f, Time.deltaTime / fadeOutSpeed);
@@ -123,84 +148,48 @@ public class Sounds : MonoBehaviour
     }
 
     /// <summary>
-    /// Inicia a aceleração - toca som de arranque
+    /// Starts acceleration - plays startup sound
     /// </summary>
-    void IniciarAceleracao()
+    private void StartAcceleration()
     {
         isAccelerating = true;
-        tempoAcelerando = 0f;
-        arranqueIniciado = true;
-        loopIniciado = false;
+        acceleratingTime = 0f;
+        startupStarted = true;
+        loopStarted = false;
         
-        // Tocar som de arranque
-        if (arranque != null && effectsAudioSource != null)
+        if (startupSound != null && effectsAudioSource != null)
         {
-            effectsAudioSource.PlayOneShot(arranque, volumeArranque);
+            effectsAudioSource.PlayOneShot(startupSound, startupVolume);
         }
-        
-        Debug.Log("🚀 Arranque iniciado!");
     }
 
     /// <summary>
-    /// Para a aceleração - inicia fade out
+    /// Stops acceleration - starts fade out
     /// </summary>
-    void PararAceleracao()
+    private void StopAcceleration()
     {
         isAccelerating = false;
-        arranqueIniciado = false;
-        loopIniciado = false;
-        tempoAcelerando = 0f;
-        
-        Debug.Log("🛑 A fazer fade out...");
+        startupStarted = false;
+        loopStarted = false;
+        acceleratingTime = 0f;
     }
 
     /// <summary>
-    /// Inicia o loop do motor após 2 segundos
+    /// Starts motor loop after 2 seconds
     /// </summary>
-    void IniciarLoop()
+    private void StartLoop()
     {
-        if (loop != null && motorAudioSource != null)
+        if (loopSound != null && motorAudioSource != null)
         {
-            loopIniciado = true;
-            motorAudioSource.clip = loop;
-            motorAudioSource.volume = volumeLoop;
+            loopStarted = true;
+            motorAudioSource.clip = loopSound;
+            motorAudioSource.volume = loopVolume;
             motorAudioSource.Play();
-            
-            Debug.Log("🔄 Loop iniciado!");
         }
     }
 
     /// <summary>
-    /// Método PÚBLICO - Chamado pelo Movement quando começa/para movimento
-    /// Mantido para compatibilidade mas não faz nada (o Update gere tudo)
-    /// </summary>
-    public void IniciarMovimento(bool modoInterior)
-    {
-        // Não precisa fazer nada - o Update gere tudo baseado no input
-    }
-
-    /// <summary>
-    /// Método PÚBLICO - Chamado pelo Movement quando para
-    /// Mantido para compatibilidade mas não faz nada (o Update gere tudo)
-    /// </summary>
-    public void PararMovimento()
-    {
-        // Não precisa fazer nada - o Update gere tudo baseado no input
-    }
-
-    /// <summary>
-    /// Método PÚBLICO - Toca o som de clique
-    /// </summary>
-    public void TocarClique()
-    {
-        if (cliqueSound != null && effectsAudioSource != null)
-        {
-            effectsAudioSource.PlayOneShot(cliqueSound, 0.5f);
-        }
-    }
-
-    /// <summary>
-    /// Detecta colisões e toca sons apropriados
+    /// Detects collisions and plays appropriate sounds
     /// </summary>
     void OnCollisionEnter(Collision collision)
     {
@@ -208,27 +197,59 @@ public class Sounds : MonoBehaviour
 
         if (impactVelocity >= minCollisionVelocity && effectsAudioSource != null)
         {
-            // Determinar tipo de colisão baseado no ângulo
+            // Determine collision type based on angle
             Vector3 contactNormal = collision.GetContact(0).normal;
-            float angulo = Vector3.Angle(transform.forward, -contactNormal);
+            float angle = Vector3.Angle(transform.forward, -contactNormal);
             
-            AudioClip somColisao = null;
+            AudioClip collisionSound = null;
             
-            // Colisão frontal ou traseira
-            if (angulo < 45f || angulo > 135f)
+            // Front or rear collision
+            if (angle < 45f || angle > 135f)
             {
-                somColisao = colisaoFrontal;
+                collisionSound = frontCollisionSound;
             }
-            // Colisão lateral
+            // Side collision
             else
             {
-                somColisao = colisaoLateral;
+                collisionSound = sideCollisionSound;
             }
             
-            if (somColisao != null)
+            if (collisionSound != null)
             {
-                effectsAudioSource.PlayOneShot(somColisao, volumeColisao);
+                effectsAudioSource.PlayOneShot(collisionSound, collisionVolume);
             }
+        }
+    }
+
+    // ===== PUBLIC METHODS =====
+
+    /// <summary>
+    /// PUBLIC method - Called by Movement when starting/stopping movement
+    /// Kept for compatibility but does nothing (Update manages everything)
+    /// </summary>
+    public void StartMovement(bool interiorMode)
+    {
+        // Not needed - Update manages everything based on input
+    }
+
+    /// <summary>
+    /// PUBLIC method - Called by Movement when stopping
+    /// Kept for compatibility but does nothing (Update manages everything)
+    /// </summary>
+    public void StopMovement()
+    {
+        // Not needed - Update manages everything based on input
+    }
+
+    /// <summary>
+    /// PUBLIC method - Plays click sound
+    /// Called by WheelController when changing steering type
+    /// </summary>
+    public void PlayClick()
+    {
+        if (clickSound != null && effectsAudioSource != null)
+        {
+            effectsAudioSource.PlayOneShot(clickSound, 0.5f);
         }
     }
 }

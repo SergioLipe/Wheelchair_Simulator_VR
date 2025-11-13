@@ -1,142 +1,162 @@
 using UnityEngine;
-using System.Collections; // Precisamos disto para as Corrotinas
+using System.Collections;
 
+/// <summary>
+/// Alternative sound system with fade out effects
+/// Uses separate AudioSources for startup and movement loop
+/// </summary>
 [RequireComponent(typeof(Movement))]
-[RequireComponent(typeof(AudioSource))] 
+[RequireComponent(typeof(AudioSource))]
 public class WSound : MonoBehaviour
 {
-    [Header("Referências dos Audio Sources")]
-    [Tooltip("O AudioSource que tem o som de ARRANQUE (toca 1 vez)")]
-    public AudioSource audioArranque;
+    [Header("Audio Source References")]
+    [Tooltip("AudioSource with STARTUP sound (plays once)")]
+    public AudioSource startupAudioSource;
 
-    [Tooltip("O AudioSource que tem o som de MOVIMENTO (em loop)")]
-    public AudioSource audioMovimento;
+    [Tooltip("AudioSource with MOVEMENT sound (loops)")]
+    public AudioSource movementAudioSource;
 
-    [Header("Configuração do Fade")]
-    [Tooltip("Tempo (em segundos) que o som de movimento leva a desaparecer")]
-    public float tempoFadeOut = 0.2f; // 0.2 segundos é muito rápido
+    [Header("Fade Configuration")]
+    [Tooltip("Time (in seconds) for movement sound to fade out")]
+    public float fadeOutTime = 0.2f;
 
-    [Header("Referências")]
+    // Component references
     private Movement movementController;
 
-    // Estado
-    private bool somArranqueTocou = false;
-    private bool estaAcelerandoCache = false; // Guarda o estado anterior do INPUT
+    // State
+    private bool startupSoundPlayed = false;
+    private bool wasAcceleratingCache = false;
     
-    // Controlo do Fade
+    // Fade control
     private Coroutine fadeOutCoroutine;
-    private float volumeOriginalMovimento;
+    private float originalMovementVolume;
 
     void Start()
     {
-        movementController = GetComponent<Movement>();
-
-        if (audioArranque == null || audioMovimento == null)
-        {
-            Debug.LogError("Os Audio Sources (Arranque, Movimento) não foram definidos no WSound!");
-            return; 
-        }
-        
-        // Guarda o volume original para saber a quanto voltar
-        volumeOriginalMovimento = audioMovimento.volume;
+        InitializeComponents();
     }
 
     void Update()
     {
-        // Lemos a variável pública do Movement.cs que regista o INPUT
-        bool estaAcelerandoAgora = movementController.jogadorEstaAcelerando;
+        CheckAccelerationState();
+        UpdateStartupToLoopTransition();
+    }
 
-        // CASO 1: O jogador COMEÇOU a acelerar
-        if (estaAcelerandoAgora && !estaAcelerandoCache)
+    /// <summary>
+    /// Initializes component references and validates audio sources
+    /// </summary>
+    private void InitializeComponents()
+    {
+        movementController = GetComponent<Movement>();
+
+        if (startupAudioSource == null || movementAudioSource == null)
         {
-            TocarSonsInicio();
+            return;
         }
-        // CASO 2: O jogador PAROU de acelerar (largou a tecla)
-        else if (!estaAcelerandoAgora && estaAcelerandoCache)
+        
+        originalMovementVolume = movementAudioSource.volume;
+    }
+
+    /// <summary>
+    /// Checks acceleration state and triggers appropriate sounds
+    /// </summary>
+    private void CheckAccelerationState()
+    {
+        bool acceleratingNow = movementController.playerIsAccelerating;
+
+        // Player started accelerating
+        if (acceleratingNow && !wasAcceleratingCache)
         {
-            PararSons(); // (Esta função agora faz fade out)
+            PlayStartupSounds();
+        }
+        // Player stopped accelerating
+        else if (!acceleratingNow && wasAcceleratingCache)
+        {
+            StopSounds();
         }
 
-        // Atualiza o estado "cache" para o próximo frame
-        estaAcelerandoCache = estaAcelerandoAgora;
+        wasAcceleratingCache = acceleratingNow;
+    }
 
-        // --- Lógica de transição Arranque -> Loop ---
-        if (somArranqueTocou && !audioArranque.isPlaying)
+    /// <summary>
+    /// Handles transition from startup sound to movement loop
+    /// </summary>
+    private void UpdateStartupToLoopTransition()
+    {
+        if (startupSoundPlayed && !startupAudioSource.isPlaying)
         {
-            // Se o arranque acabou E o jogador AINDA está a acelerar
-            if (estaAcelerandoAgora && !audioMovimento.isPlaying)
+            bool acceleratingNow = movementController.playerIsAccelerating;
+            
+            if (acceleratingNow && !movementAudioSource.isPlaying)
             {
-                // Garante que o volume está no máximo antes de tocar o loop
-                audioMovimento.volume = volumeOriginalMovimento; 
-                audioMovimento.Play();
+                movementAudioSource.volume = originalMovementVolume;
+                movementAudioSource.Play();
             }
-            somArranqueTocou = false; 
+            startupSoundPlayed = false;
         }
     }
 
-    private void TocarSonsInicio()
+    /// <summary>
+    /// Plays startup sounds when acceleration begins
+    /// </summary>
+    private void PlayStartupSounds()
     {
-        // Se a cadeira estava a fazer fade out, cancela-o IMEDIATAMENTE!
+        // Cancel fade out if active
         if (fadeOutCoroutine != null)
         {
             StopCoroutine(fadeOutCoroutine);
             fadeOutCoroutine = null;
         }
 
-        // --- CORREÇÃO IMPORTANTE ---
-        // Para garantir que o som de loop (que podia estar em fade out)
-        // para IMEDIATAMENTE antes de o arranque começar.
-        audioMovimento.Stop(); 
-        // --- FIM DA CORREÇÃO ---
+        // Stop loop sound immediately
+        movementAudioSource.Stop();
 
-        // Restaura o volume do som de movimento (caso tenha sido
-        // alterado pelo fade out)
-        audioMovimento.volume = volumeOriginalMovimento; 
+        // Restore movement sound volume
+        movementAudioSource.volume = originalMovementVolume;
 
-        // Para o som de arranque (para o caso de estar a tocar) e recomeça-o
-        audioArranque.Stop();
-        audioArranque.Play();
-        somArranqueTocou = true;
+        // Play startup sound
+        startupAudioSource.Stop();
+        startupAudioSource.Play();
+        startupSoundPlayed = true;
     }
 
-    private void PararSons()
+    /// <summary>
+    /// Stops sounds with fade out effect
+    /// </summary>
+    private void StopSounds()
     {
-        // O arranque para sempre imediatamente
-        audioArranque.Stop();
-        somArranqueTocou = false;
+        // Stop startup immediately
+        startupAudioSource.Stop();
+        startupSoundPlayed = false;
 
-        // Só fazemos fade out se o som de movimento ESTIVER a tocar
-        if (audioMovimento.isPlaying)
+        // Fade out movement sound if playing
+        if (movementAudioSource.isPlaying)
         {
-            // Inicia a corrotina de fade out
-            fadeOutCoroutine = StartCoroutine(FadeOut(audioMovimento, tempoFadeOut));
+            fadeOutCoroutine = StartCoroutine(FadeOut(movementAudioSource, fadeOutTime));
         }
     }
 
     /// <summary>
-    /// Corrotina que baixa o volume de um AudioSource até zero e depois pára-o.
+    /// Coroutine that lowers AudioSource volume to zero then stops it
     /// </summary>
-    private IEnumerator FadeOut(AudioSource audioSource, float tempoDeFade)
+    private IEnumerator FadeOut(AudioSource audioSource, float fadeTime)
     {
-        float volumeInicial = audioSource.volume;
-        float tempoPassado = 0f;
+        float startVolume = audioSource.volume;
+        float elapsedTime = 0f;
 
-        while (tempoPassado < tempoDeFade)
+        while (elapsedTime < fadeTime)
         {
-            // Calcula o novo volume
-            tempoPassado += Time.deltaTime;
-            audioSource.volume = Mathf.Lerp(volumeInicial, 0f, tempoPassado / tempoDeFade);
-            
-            // Espera até ao próximo frame
-            yield return null; 
+            elapsedTime += Time.deltaTime;
+            audioSource.volume = Mathf.Lerp(startVolume, 0f, elapsedTime / fadeTime);
+            yield return null;
         }
 
-        // Garante que fica em zero e pára o som
+        // Ensure volume is zero and stop sound
         audioSource.volume = 0f;
         audioSource.Stop();
         
-        // Restaura o volume original para a próxima vez que tocar
-        audioSource.volume = volumeOriginalMovimento; 
-        fadeOutCoroutine = null; // Limpa a referência da corrotina
+        // Restore original volume for next time
+        audioSource.volume = originalMovementVolume;
+        fadeOutCoroutine = null;
     }
 }

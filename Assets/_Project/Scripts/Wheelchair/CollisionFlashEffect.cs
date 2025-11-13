@@ -3,463 +3,490 @@ using UnityEngine.UI;
 using System.Collections;
 
 /// <summary>
-/// Sistema moderno de feedback visual de colisões
-/// Usa UI Canvas com gradientes, animações suaves e efeitos direcionais
+/// Modern visual collision feedback system
+/// Uses UI Canvas with gradients, smooth animations and directional effects
 /// </summary>
 public class CollisionFlashEffect : MonoBehaviour
 {
-    [Header("=== Configuração Geral ===")]
-    [Tooltip("Ativar sistema de feedback")]
-    public bool feedbackAtivo = true;
+    [Header("=== General Configuration ===")]
+    [Tooltip("Enable feedback system")]
+    public bool feedbackActive = true;
 
-    [Tooltip("Referência ao Canvas (será criado automaticamente se null)")]
+    [Tooltip("Canvas reference (will be created automatically if null)")]
     public Canvas canvas;
 
-    [Header("=== Configuração Visual ===")]
-    [Tooltip("Duração do efeito (segundos)")]
+    [Header("=== Visual Configuration ===")]
+    [Tooltip("Effect duration (seconds)")]
     [Range(0.1f, 2f)]
-    public float duracaoEfeito = 0.5f;
+    public float effectDuration = 0.5f;
 
-    [Tooltip("Intensidade máxima do efeito (0-1)")]
+    [Tooltip("Maximum effect intensity (0-1)")]
     [Range(0f, 1f)]
-    public float intensidadeMaxima = 0.7f;
+    public float maxIntensity = 0.7f;
 
-    [Tooltip("Usar gradiente radial (mais moderno)")]
-    public bool usarGradienteRadial = true;
+    [Tooltip("Use radial gradient (more modern)")]
+    public bool useRadialGradient = true;
 
-    [Header("=== Cores ===")]
-    [Tooltip("Cor para colisões frontais/traseiras")]
-    public Color corImpacto = new Color(1f, 0.2f, 0.2f, 1f); // Vermelho vibrante
+    [Header("=== Colors ===")]
+    [Tooltip("Color for front/rear collisions")]
+    public Color impactColor = new Color(1f, 0.2f, 0.2f, 1f);
 
-    [Tooltip("Cor para deslizamentos laterais")]
-    public Color corDeslizamento = new Color(1f, 0.8f, 0f, 1f); // Amarelo/laranja
+    [Tooltip("Color for side slides")]
+    public Color slideColor = new Color(1f, 0.8f, 0f, 1f);
 
-    [Header("=== Animação ===")]
-    [Tooltip("Curva de animação do efeito")]
-    public AnimationCurve curvaAnimacao = AnimationCurve.EaseInOut(0, 1, 1, 0);
+    [Header("=== Animation ===")]
+    [Tooltip("Effect animation curve")]
+    public AnimationCurve animationCurve = AnimationCurve.EaseInOut(0, 1, 1, 0);
 
-    [Tooltip("Usar efeito de pulso")]
-    public bool efeitoPulso = true;
+    [Tooltip("Use pulse effect")]
+    public bool pulseEffect = true;
 
-    [Tooltip("Número de pulsos")]
+    [Tooltip("Number of pulses")]
     [Range(1, 3)]
-    public int numeroPulsos = 1;
+    public int pulseCount = 1;
 
-    [Header("=== Camera Shake (Opcional) ===")]
-    [Tooltip("Ativar tremor de câmera")]
-    public bool cameraShakeAtivo = true;
+    [Header("=== Camera Shake (Optional) ===")]
+    [Tooltip("Enable camera shake")]
+    public bool cameraShakeActive = true;
 
-    [Tooltip("Intensidade do tremor")]
+    [Tooltip("Shake intensity")]
     [Range(0f, 1f)]
-    public float intensidadeTremor = 0.15f;
+    public float shakeIntensity = 0.15f;
 
-    [Tooltip("Duração do tremor")]
+    [Tooltip("Shake duration")]
     [Range(0.05f, 0.5f)]
-    public float duracaoTremor = 0.2f;
+    public float shakeDuration = 0.2f;
 
-    [Header("=== Efeitos Extras ===")]
-    [Tooltip("Mostrar setas direcionais")]
-    public bool mostrarSetas = true;
+    [Header("=== Extra Effects ===")]
+    [Tooltip("Show directional arrows")]
+    public bool showArrows = true;
 
-    [Tooltip("Tamanho das setas")]
+    [Tooltip("Arrow size")]
     [Range(50f, 200f)]
-    public float tamanhoSeta = 100f;
+    public float arrowSize = 100f;
 
-    // Tipos de colisão
-    public enum TipoColisao
+    public enum CollisionType
     {
-        Nenhum,
-        Frontal,
-        Traseiro,
-        LateralEsquerda,
-        LateralDireita
+        None,
+        Front,
+        Back,
+        LeftSide,
+        RightSide
     }
 
-    // Componentes UI
-    private GameObject painelEfeito;
-    private Image imagemEfeito;
-    private GameObject[] setas = new GameObject[4]; // Frontal, Traseiro, Esquerda, Direita
-    private Image[] imagensSetas = new Image[4];
+    // UI components
+    private GameObject effectPanel;
+    private Image effectImage;
+    private GameObject[] arrows = new GameObject[4];
+    private Image[] arrowImages = new Image[4];
 
-    // Estado da animação
-    private Coroutine corotinaAtual;
+    // Animation state
+    private Coroutine currentCoroutine;
     private Transform cameraTransform;
-    private Vector3 posicaoOriginalCamera;
+    private Vector3 originalCameraPosition;
 
     void Start()
     {
-        ConfigurarUI();
-        
-        // Obter referência da câmera para shake
+        SetupUI();
+        InitializeCamera();
+    }
+
+    void OnDestroy()
+    {
+        StopAllEffects();
+    }
+
+    /// <summary>
+    /// Initializes camera reference for shake effect
+    /// </summary>
+    private void InitializeCamera()
+    {
         if (Camera.main != null)
         {
             cameraTransform = Camera.main.transform;
-            posicaoOriginalCamera = cameraTransform.localPosition;
+            originalCameraPosition = cameraTransform.localPosition;
         }
     }
 
     /// <summary>
-    /// Configura o Canvas e elementos UI
+    /// Sets up Canvas and UI elements
     /// </summary>
-    void ConfigurarUI()
+    void SetupUI()
     {
-        // Criar Canvas se não existir
-        if (canvas == null)
+        CreateCanvasIfNeeded();
+        CreateEffectPanel();
+        
+        if (showArrows)
         {
-            GameObject canvasObj = new GameObject("CollisionFeedbackCanvas");
-            canvas = canvasObj.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 1000; // Garantir que fica em cima
-
-            CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
-
-            canvasObj.AddComponent<GraphicRaycaster>();
-        }
-
-        // Criar painel principal de efeito
-        painelEfeito = new GameObject("PainelEfeito");
-        painelEfeito.transform.SetParent(canvas.transform, false);
-
-        RectTransform rectEfeito = painelEfeito.AddComponent<RectTransform>();
-        rectEfeito.anchorMin = Vector2.zero;
-        rectEfeito.anchorMax = Vector2.one;
-        rectEfeito.sizeDelta = Vector2.zero;
-
-        imagemEfeito = painelEfeito.AddComponent<Image>();
-        imagemEfeito.color = new Color(1, 1, 1, 0);
-        imagemEfeito.raycastTarget = false;
-
-        // Criar setas direcionais
-        if (mostrarSetas)
-        {
-            CriarSetas();
+            CreateArrows();
         }
     }
 
     /// <summary>
-    /// Cria as setas direcionais
+    /// Creates Canvas if it doesn't exist
     /// </summary>
-    void CriarSetas()
+    private void CreateCanvasIfNeeded()
     {
-        string[] nomes = { "SetaFrontal", "SetaTraseiro", "SetaEsquerda", "SetaDireita" };
-        Vector2[] posicoes = {
-            new Vector2(0.5f, 0.85f),  // Cima
-            new Vector2(0.5f, 0.15f),  // Baixo
-            new Vector2(0.15f, 0.5f),  // Esquerda
-            new Vector2(0.85f, 0.5f)   // Direita
+        if (canvas != null) return;
+
+        GameObject canvasObj = new GameObject("CollisionFeedbackCanvas");
+        canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1000;
+
+        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+
+        canvasObj.AddComponent<GraphicRaycaster>();
+    }
+
+    /// <summary>
+    /// Creates main effect panel
+    /// </summary>
+    private void CreateEffectPanel()
+    {
+        effectPanel = new GameObject("EffectPanel");
+        effectPanel.transform.SetParent(canvas.transform, false);
+
+        RectTransform rectEffect = effectPanel.AddComponent<RectTransform>();
+        rectEffect.anchorMin = Vector2.zero;
+        rectEffect.anchorMax = Vector2.one;
+        rectEffect.sizeDelta = Vector2.zero;
+
+        effectImage = effectPanel.AddComponent<Image>();
+        effectImage.color = new Color(1, 1, 1, 0);
+        effectImage.raycastTarget = false;
+    }
+
+    /// <summary>
+    /// Creates directional arrows
+    /// </summary>
+    void CreateArrows()
+    {
+        string[] names = { "FrontArrow", "BackArrow", "LeftArrow", "RightArrow" };
+        Vector2[] positions = {
+            new Vector2(0.5f, 0.85f),
+            new Vector2(0.5f, 0.15f),
+            new Vector2(0.15f, 0.5f),
+            new Vector2(0.85f, 0.5f)
         };
-        float[] rotacoes = { 0f, 180f, 90f, -90f };
+        float[] rotations = { 0f, 180f, 90f, -90f };
+
+        Sprite arrowSprite = CreateArrowSprite();
 
         for (int i = 0; i < 4; i++)
         {
-            setas[i] = new GameObject(nomes[i]);
-            setas[i].transform.SetParent(canvas.transform, false);
+            arrows[i] = new GameObject(names[i]);
+            arrows[i].transform.SetParent(canvas.transform, false);
 
-            RectTransform rect = setas[i].AddComponent<RectTransform>();
-            rect.anchorMin = posicoes[i];
-            rect.anchorMax = posicoes[i];
-            rect.sizeDelta = new Vector2(tamanhoSeta, tamanhoSeta);
-            rect.localRotation = Quaternion.Euler(0, 0, rotacoes[i]);
+            RectTransform rect = arrows[i].AddComponent<RectTransform>();
+            rect.anchorMin = positions[i];
+            rect.anchorMax = positions[i];
+            rect.sizeDelta = new Vector2(arrowSize, arrowSize);
+            rect.localRotation = Quaternion.Euler(0, 0, rotations[i]);
 
-            imagensSetas[i] = setas[i].AddComponent<Image>();
-            imagensSetas[i].color = new Color(1, 1, 1, 0);
-            imagensSetas[i].raycastTarget = false;
-
-            // Criar sprite de seta (triângulo simples)
-            imagensSetas[i].sprite = CriarSpriteSeta();
+            arrowImages[i] = arrows[i].AddComponent<Image>();
+            arrowImages[i].color = new Color(1, 1, 1, 0);
+            arrowImages[i].raycastTarget = false;
+            arrowImages[i].sprite = arrowSprite;
         }
     }
 
     /// <summary>
-    /// Cria um sprite de seta proceduralmente
+    /// Creates arrow sprite procedurally
     /// </summary>
-    Sprite CriarSpriteSeta()
+    Sprite CreateArrowSprite()
     {
-        int tamanho = 128;
-        Texture2D textura = new Texture2D(tamanho, tamanho, TextureFormat.RGBA32, false);
-        Color[] pixels = new Color[tamanho * tamanho];
+        int size = 128;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        Color[] pixels = new Color[size * size];
 
-        // Preencher com transparente
         for (int i = 0; i < pixels.Length; i++)
             pixels[i] = Color.clear;
 
-        // Desenhar triângulo apontando para cima
-        for (int y = 0; y < tamanho; y++)
+        for (int y = 0; y < size; y++)
         {
-            for (int x = 0; x < tamanho; x++)
+            for (int x = 0; x < size; x++)
             {
-                float normY = (float)y / tamanho;
-                float centroX = tamanho / 2f;
-                float largura = (1f - normY) * tamanho / 2f;
+                float normY = (float)y / size;
+                float centerX = size / 2f;
+                float width = (1f - normY) * size / 2f;
 
-                if (x >= centroX - largura && x <= centroX + largura)
+                if (x >= centerX - width && x <= centerX + width)
                 {
-                    pixels[y * tamanho + x] = Color.white;
+                    pixels[y * size + x] = Color.white;
                 }
             }
         }
 
-        textura.SetPixels(pixels);
-        textura.Apply();
+        texture.SetPixels(pixels);
+        texture.Apply();
 
-        return Sprite.Create(textura, new Rect(0, 0, tamanho, tamanho), new Vector2(0.5f, 0.5f));
+        return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f));
     }
 
-    /// <summary>
-    /// Ativar feedback de colisão frontal
-    /// </summary>
-    public void FlashFrontal()
-    {
-        AtivarFeedback(TipoColisao.Frontal);
-    }
+    // ===== PUBLIC METHODS =====
+
+    public void FrontFlash() => ActivateFeedback(CollisionType.Front);
+    public void BackFlash() => ActivateFeedback(CollisionType.Back);
+    public void LeftSideFlash() => ActivateFeedback(CollisionType.LeftSide);
+    public void RightSideFlash() => ActivateFeedback(CollisionType.RightSide);
 
     /// <summary>
-    /// Ativar feedback de colisão traseira
+    /// Activates visual feedback
     /// </summary>
-    public void FlashTraseiro()
+    void ActivateFeedback(CollisionType type)
     {
-        AtivarFeedback(TipoColisao.Traseiro);
-    }
+        if (!feedbackActive || type == CollisionType.None) return;
 
-    /// <summary>
-    /// Ativar feedback de deslizamento lateral esquerdo
-    /// </summary>
-    public void FlashLateralEsquerdo()
-    {
-        AtivarFeedback(TipoColisao.LateralEsquerda);
-    }
+        if (currentCoroutine != null)
+            StopCoroutine(currentCoroutine);
 
-    /// <summary>
-    /// Ativar feedback de deslizamento lateral direito
-    /// </summary>
-    public void FlashLateralDireito()
-    {
-        AtivarFeedback(TipoColisao.LateralDireita);
-    }
+        currentCoroutine = StartCoroutine(AnimateFeedback(type));
 
-    /// <summary>
-    /// Ativa o feedback visual
-    /// </summary>
-    void AtivarFeedback(TipoColisao tipo)
-    {
-        if (!feedbackAtivo || tipo == TipoColisao.Nenhum) return;
-
-        // Parar animação anterior se existir
-        if (corotinaAtual != null)
-            StopCoroutine(corotinaAtual);
-
-        // Iniciar nova animação
-        corotinaAtual = StartCoroutine(AnimarFeedback(tipo));
-
-        // Camera shake
-        if (cameraShakeAtivo && cameraTransform != null)
+        if (cameraShakeActive && cameraTransform != null)
         {
             StartCoroutine(CameraShake());
         }
     }
 
     /// <summary>
-    /// Corrotina principal de animação
+    /// Main animation coroutine
     /// </summary>
-    IEnumerator AnimarFeedback(TipoColisao tipo)
+    IEnumerator AnimateFeedback(CollisionType type)
     {
-        // Determinar cor e direção
-        Color cor = (tipo == TipoColisao.Frontal || tipo == TipoColisao.Traseiro) 
-            ? corImpacto : corDeslizamento;
-
-        // Criar textura de gradiente
-        Texture2D textura = CriarTexturaGradiente(tipo);
-        Sprite sprite = Sprite.Create(textura, new Rect(0, 0, textura.width, textura.height), 
+        Color color = GetColorForType(type);
+        Texture2D texture = CreateGradientTexture(type);
+        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), 
             new Vector2(0.5f, 0.5f));
-        imagemEfeito.sprite = sprite;
+        effectImage.sprite = sprite;
 
-        // Mostrar seta correspondente
-        int indiceSeta = -1;
-        if (mostrarSetas)
+        int arrowIndex = GetArrowIndex(type);
+        float durationPerPulse = effectDuration / pulseCount;
+
+        yield return AnimatePulses(color, arrowIndex, durationPerPulse);
+
+        CleanupAnimation(color, arrowIndex, texture, sprite);
+    }
+
+    /// <summary>
+    /// Returns color based on collision type
+    /// </summary>
+    private Color GetColorForType(CollisionType type)
+    {
+        return (type == CollisionType.Front || type == CollisionType.Back) ? impactColor : slideColor;
+    }
+
+    /// <summary>
+    /// Returns arrow index for collision type
+    /// </summary>
+    private int GetArrowIndex(CollisionType type)
+    {
+        if (!showArrows) return -1;
+
+        switch (type)
         {
-            switch (tipo)
-            {
-                case TipoColisao.Frontal: indiceSeta = 0; break;
-                case TipoColisao.Traseiro: indiceSeta = 1; break;
-                case TipoColisao.LateralEsquerda: indiceSeta = 2; break;
-                case TipoColisao.LateralDireita: indiceSeta = 3; break;
-            }
+            case CollisionType.Front: return 0;
+            case CollisionType.Back: return 1;
+            case CollisionType.LeftSide: return 2;
+            case CollisionType.RightSide: return 3;
+            default: return -1;
         }
+    }
 
-        // Animar
-        float tempoDecorrido = 0f;
-        float duracaoPorPulso = duracaoEfeito / numeroPulsos;
+    /// <summary>
+    /// Animates pulses
+    /// </summary>
+    private IEnumerator AnimatePulses(Color color, int arrowIndex, float durationPerPulse)
+    {
+        float elapsedTime = 0f;
 
-        for (int pulso = 0; pulso < numeroPulsos; pulso++)
+        for (int pulse = 0; pulse < pulseCount; pulse++)
         {
-            float tempoInicioPulso = tempoDecorrido;
+            float pulseStartTime = elapsedTime;
 
-            while (tempoDecorrido - tempoInicioPulso < duracaoPorPulso)
+            while (elapsedTime - pulseStartTime < durationPerPulse)
             {
-                tempoDecorrido += Time.deltaTime;
-                float progresso = (tempoDecorrido - tempoInicioPulso) / duracaoPorPulso;
-                float intensidade = curvaAnimacao.Evaluate(progresso) * intensidadeMaxima;
+                elapsedTime += Time.deltaTime;
+                float progress = (elapsedTime - pulseStartTime) / durationPerPulse;
+                float intensity = animationCurve.Evaluate(progress) * maxIntensity;
 
-                // Aplicar cor com intensidade
-                Color corAtual = cor;
-                corAtual.a = intensidade;
-                imagemEfeito.color = corAtual;
-
-                // Animar seta
-                if (indiceSeta >= 0)
-                {
-                    Color corSeta = cor;
-                    corSeta.a = intensidade * 1.5f; // Setas mais visíveis
-                    imagensSetas[indiceSeta].color = corSeta;
-
-                    // Pulsar tamanho da seta
-                    float escala = 1f + Mathf.Sin(progresso * Mathf.PI) * 0.3f;
-                    setas[indiceSeta].transform.localScale = Vector3.one * escala;
-                }
+                UpdateEffectVisuals(color, intensity, arrowIndex, progress);
 
                 yield return null;
             }
         }
-
-        // Fade out final
-        imagemEfeito.color = new Color(cor.r, cor.g, cor.b, 0);
-        if (indiceSeta >= 0)
-        {
-            imagensSetas[indiceSeta].color = new Color(cor.r, cor.g, cor.b, 0);
-            setas[indiceSeta].transform.localScale = Vector3.one;
-        }
-
-        // Limpar textura
-        Destroy(textura);
-        Destroy(sprite);
-
-        corotinaAtual = null;
     }
 
     /// <summary>
-    /// Cria textura de gradiente direcional
+    /// Updates effect visuals each frame
     /// </summary>
-    Texture2D CriarTexturaGradiente(TipoColisao tipo)
+    private void UpdateEffectVisuals(Color color, float intensity, int arrowIndex, float progress)
     {
-        int largura = 512;
-        int altura = 512;
-        Texture2D textura = new Texture2D(largura, altura, TextureFormat.RGBA32, false);
+        Color currentColor = color;
+        currentColor.a = intensity;
+        effectImage.color = currentColor;
 
-        for (int y = 0; y < altura; y++)
+        if (arrowIndex >= 0)
         {
-            for (int x = 0; x < largura; x++)
+            Color arrowColor = color;
+            arrowColor.a = intensity * 1.5f;
+            arrowImages[arrowIndex].color = arrowColor;
+
+            float scale = 1f + Mathf.Sin(progress * Mathf.PI) * 0.3f;
+            arrows[arrowIndex].transform.localScale = Vector3.one * scale;
+        }
+    }
+
+    /// <summary>
+    /// Cleans up animation resources
+    /// </summary>
+    private void CleanupAnimation(Color color, int arrowIndex, Texture2D texture, Sprite sprite)
+    {
+        effectImage.color = new Color(color.r, color.g, color.b, 0);
+        
+        if (arrowIndex >= 0)
+        {
+            arrowImages[arrowIndex].color = new Color(color.r, color.g, color.b, 0);
+            arrows[arrowIndex].transform.localScale = Vector3.one;
+        }
+
+        Destroy(texture);
+        Destroy(sprite);
+        currentCoroutine = null;
+    }
+
+    /// <summary>
+    /// Creates directional gradient texture
+    /// </summary>
+    Texture2D CreateGradientTexture(CollisionType type)
+    {
+        int size = 512;
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
             {
-                float alpha = 0f;
-
-                if (usarGradienteRadial)
-                {
-                    // Gradiente radial das bordas
-                    float distX = Mathf.Abs(x - largura / 2f) / (largura / 2f);
-                    float distY = Mathf.Abs(y - altura / 2f) / (altura / 2f);
-                    
-                    switch (tipo)
-                    {
-                        case TipoColisao.Frontal:
-                            alpha = 1f - (distX * 0.7f + (1f - (float)y / altura) * 0.3f);
-                            break;
-                        case TipoColisao.Traseiro:
-                            alpha = 1f - (distX * 0.7f + ((float)y / altura) * 0.3f);
-                            break;
-                        case TipoColisao.LateralEsquerda:
-                            alpha = 1f - (distY * 0.7f + (1f - (float)x / largura) * 0.3f);
-                            break;
-                        case TipoColisao.LateralDireita:
-                            alpha = 1f - (distY * 0.7f + ((float)x / largura) * 0.3f);
-                            break;
-                    }
-                }
-                else
-                {
-                    // Gradiente linear simples
-                    switch (tipo)
-                    {
-                        case TipoColisao.Frontal:
-                            alpha = 1f - (float)y / altura;
-                            break;
-                        case TipoColisao.Traseiro:
-                            alpha = (float)y / altura;
-                            break;
-                        case TipoColisao.LateralEsquerda:
-                            alpha = 1f - (float)x / largura;
-                            break;
-                        case TipoColisao.LateralDireita:
-                            alpha = (float)x / largura;
-                            break;
-                    }
-                }
-
-                alpha = Mathf.Clamp01(alpha);
-                textura.SetPixel(x, y, new Color(1, 1, 1, alpha));
+                float alpha = CalculateGradientAlpha(type, x, y, size);
+                texture.SetPixel(x, y, new Color(1, 1, 1, Mathf.Clamp01(alpha)));
             }
         }
 
-        textura.Apply();
-        return textura;
+        texture.Apply();
+        return texture;
     }
 
     /// <summary>
-    /// Efeito de tremor de câmera
+    /// Calculates gradient alpha for pixel
+    /// </summary>
+    private float CalculateGradientAlpha(CollisionType type, int x, int y, int size)
+    {
+        if (useRadialGradient)
+        {
+            return CalculateRadialGradient(type, x, y, size);
+        }
+        else
+        {
+            return CalculateLinearGradient(type, x, y, size);
+        }
+    }
+
+    /// <summary>
+    /// Calculates radial gradient alpha
+    /// </summary>
+    private float CalculateRadialGradient(CollisionType type, int x, int y, int size)
+    {
+        float distX = Mathf.Abs(x - size / 2f) / (size / 2f);
+        float distY = Mathf.Abs(y - size / 2f) / (size / 2f);
+        
+        switch (type)
+        {
+            case CollisionType.Front:
+                return 1f - (distX * 0.7f + (1f - (float)y / size) * 0.3f);
+            case CollisionType.Back:
+                return 1f - (distX * 0.7f + ((float)y / size) * 0.3f);
+            case CollisionType.LeftSide:
+                return 1f - (distY * 0.7f + (1f - (float)x / size) * 0.3f);
+            case CollisionType.RightSide:
+                return 1f - (distY * 0.7f + ((float)x / size) * 0.3f);
+            default:
+                return 0f;
+        }
+    }
+
+    /// <summary>
+    /// Calculates linear gradient alpha
+    /// </summary>
+    private float CalculateLinearGradient(CollisionType type, int x, int y, int size)
+    {
+        switch (type)
+        {
+            case CollisionType.Front:
+                return 1f - (float)y / size;
+            case CollisionType.Back:
+                return (float)y / size;
+            case CollisionType.LeftSide:
+                return 1f - (float)x / size;
+            case CollisionType.RightSide:
+                return (float)x / size;
+            default:
+                return 0f;
+        }
+    }
+
+    /// <summary>
+    /// Camera shake effect
     /// </summary>
     IEnumerator CameraShake()
     {
-        float tempoDecorrido = 0f;
+        float elapsedTime = 0f;
 
-        while (tempoDecorrido < duracaoTremor)
+        while (elapsedTime < shakeDuration)
         {
-            float intensidade = Mathf.Lerp(intensidadeTremor, 0f, tempoDecorrido / duracaoTremor);
+            float intensity = Mathf.Lerp(shakeIntensity, 0f, elapsedTime / shakeDuration);
             
             Vector3 offset = new Vector3(
-                Random.Range(-1f, 1f) * intensidade,
-                Random.Range(-1f, 1f) * intensidade,
+                Random.Range(-1f, 1f) * intensity,
+                Random.Range(-1f, 1f) * intensity,
                 0
             );
 
-            cameraTransform.localPosition = posicaoOriginalCamera + offset;
+            cameraTransform.localPosition = originalCameraPosition + offset;
 
-            tempoDecorrido += Time.deltaTime;
+            elapsedTime += Time.deltaTime;
             yield return null;
         }
 
-        cameraTransform.localPosition = posicaoOriginalCamera;
+        cameraTransform.localPosition = originalCameraPosition;
     }
 
     /// <summary>
-    /// Parar todos os efeitos
+    /// Stop all effects
     /// </summary>
-    public void PararTodosEfeitos()
+    public void StopAllEffects()
     {
-        if (corotinaAtual != null)
+        if (currentCoroutine != null)
         {
-            StopCoroutine(corotinaAtual);
-            corotinaAtual = null;
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
         }
 
-        if (imagemEfeito != null)
-            imagemEfeito.color = new Color(1, 1, 1, 0);
+        if (effectImage != null)
+            effectImage.color = new Color(1, 1, 1, 0);
 
-        for (int i = 0; i < imagensSetas.Length; i++)
+        for (int i = 0; i < arrowImages.Length; i++)
         {
-            if (imagensSetas[i] != null)
+            if (arrowImages[i] != null)
             {
-                imagensSetas[i].color = new Color(1, 1, 1, 0);
-                if (setas[i] != null)
-                    setas[i].transform.localScale = Vector3.one;
+                arrowImages[i].color = new Color(1, 1, 1, 0);
+                if (arrows[i] != null)
+                    arrows[i].transform.localScale = Vector3.one;
             }
         }
 
         if (cameraTransform != null)
-            cameraTransform.localPosition = posicaoOriginalCamera;
-    }
-
-    void OnDestroy()
-    {
-        PararTodosEfeitos();
+            cameraTransform.localPosition = originalCameraPosition;
     }
 }

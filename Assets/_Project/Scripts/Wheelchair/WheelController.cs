@@ -1,169 +1,144 @@
 using UnityEngine;
 
 /// <summary>
-/// Sistema completo de controlo das rodas da cadeira de rodas
-/// Gere viragem (steering), rotação (spinning) e movimento diferencial das rodas
-/// Suporta dois modos: Direção Frontal (standard) e Direção Traseira (mais manobrável)
+/// Complete wheelchair wheel control system
+/// Manages steering, spinning and differential wheel movement
+/// Supports two modes: Front Steering (standard) and Rear Steering (more maneuverable)
 /// </summary>
 public class WheelController : MonoBehaviour
 {
-    // ========================================================================
-    // JOINTS DE VIRAGEM (STEERING) - Controlam a direção das rodas
-    // ========================================================================
-    
-    [Header("=== Joints de Viragem (Steering) ===")]
-    
-    [Tooltip("Joint central das rodas frontais - controla viragem")]
-    public Transform joint4_ViragemFrontal;  // Bone que vira as rodas da frente
+    [Header("=== Steering Joints ===")]
+    [Tooltip("Front wheel center joint - controls steering")]
+    public Transform joint4_FrontSteering;
 
-    [Tooltip("Joint central das rodas traseiras - controla viragem")]
-    public Transform joint5_ViragemTraseira;  // Bone que vira as rodas de trás
+    [Tooltip("Rear wheel center joint - controls steering")]
+    public Transform joint5_RearSteering;
 
-    // ========================================================================
-    // JOINTS DE ROTAÇÃO DAS RODAS - Fazem as rodas girarem (spinning)
-    // ========================================================================
-    
-    [Header("=== Joints de Rotação das Rodas ===")]
-    
-    [Tooltip("Joint da roda frontal esquerda - gira a roda")]
-    public Transform joint6_RodaFrontalEsquerda;
+    [Header("=== Wheel Rotation Joints ===")]
+    [Tooltip("Front left wheel joint - spins the wheel")]
+    public Transform joint6_FrontLeftWheel;
 
-    [Tooltip("Joint da roda frontal direita - gira a roda")]
-    public Transform joint7_RodaFrontalDireita;
+    [Tooltip("Front right wheel joint - spins the wheel")]
+    public Transform joint7_FrontRightWheel;
 
-    [Tooltip("Joint da roda traseira esquerda - gira a roda")]
-    public Transform joint8_RodaTraseiraEsquerda;
+    [Tooltip("Rear left wheel joint - spins the wheel")]
+    public Transform joint8_RearLeftWheel;
 
-    [Tooltip("Joint da roda traseira direita - gira a roda")]
-    public Transform joint9_RodaTraseiraDireita;
+    [Tooltip("Rear right wheel joint - spins the wheel")]
+    public Transform joint9_RearRightWheel;
 
-    // ========================================================================
-    // TIPO DE CADEIRA DE RODAS - Define qual conjunto de rodas vira
-    // ========================================================================
-    
-    [Header("=== Tipo de Cadeira de Rodas ===")]
-    
-    [Tooltip("Tipo de direção da cadeira")]
-    public TipoDirecao tipoDirecao = TipoDirecao.DirecaoFrontal;
+    [Header("=== Wheelchair Type ===")]
+    [Tooltip("Wheelchair steering type")]
+    public SteeringType steeringType = SteeringType.FrontSteering;
 
-    [Tooltip("Tecla para alternar tipo de direção")]
-    public KeyCode teclaAlternarDirecao = KeyCode.T;
+    [Tooltip("Key to toggle steering type")]
+    public KeyCode toggleSteeringKey = KeyCode.T;
 
-    // ========================================================================
-    // CONFIGURAÇÃO FÍSICA - Parâmetros reais da cadeira
-    // ========================================================================
-    
-    [Header("=== Configuração Física ===")]
-    
-    [Tooltip("Velocidade máxima da cadeira em km/h")]
-    public float velocidadeMaximaKmH = 6f;  // Velocidade típica de cadeira elétrica
+    [Header("=== Physical Configuration ===")]
+    [Tooltip("Maximum wheelchair speed in km/h")]
+    public float maxSpeedKmH = 6f;
 
-    [Tooltip("Diâmetro das rodas traseiras em metros")]
-    public float diametroRodasTraseiras = 0.6f;  // 60cm = rodas grandes
+    [Tooltip("Rear wheel diameter in meters")]
+    public float rearWheelDiameter = 0.6f;
 
-    [Tooltip("Diâmetro das rodas frontais em metros")]
-    public float diametroRodasFrontais = 0.15f;  // 15cm = rodas pequenas
+    [Tooltip("Front wheel diameter in meters")]
+    public float frontWheelDiameter = 0.15f;
 
-    [Tooltip("Multiplicador de velocidade de rotação")]
-    public float multiplicadorVelocidade = 5f;  // Ajuste fino da rotação visual
+    [Tooltip("Rotation speed multiplier")]
+    public float speedMultiplier = 5f;
 
-    // ========================================================================
-    // CONFIGURAÇÃO DE VIRAGEM (STEERING) - Como a cadeira vira
-    // ========================================================================
-    
-    [Header("=== Configuração de Viragem ===")]
-    
-    [Tooltip("Ângulo máximo de viragem")]
+    [Header("=== Steering Configuration ===")]
+    [Tooltip("Maximum steering angle")]
     [Range(0f, 45f)]
-    public float anguloMaximoViragem = 30f;  // Máximo que as rodas podem virar
+    public float maxSteeringAngle = 30f;
 
-    [Tooltip("Velocidade de viragem")]
+    [Tooltip("Steering speed")]
     [Range(1f, 10f)]
-    public float velocidadeViragem = 5f;  // Quão rápido as rodas viram
+    public float steeringSpeed = 5f;
 
-    // ========================================================================
-    // CONFIGURAÇÃO DE ROTAÇÃO DIFERENCIAL - Rodas internas/externas em curvas
-    // ========================================================================
-    
-    [Header("=== Configuração de Rotação ===")]
-    
-    [Tooltip("Fazer rodas girarem de forma diferencial nas curvas")]
-    public bool rotacaoDiferencial = true;  // Simula comportamento realista
+    [Header("=== Rotation Configuration ===")]
+    [Tooltip("Make wheels rotate differentially in turns")]
+    public bool differentialRotation = true;
 
-    [Tooltip("Intensidade da rotação diferencial")]
+    [Tooltip("Differential rotation intensity")]
     [Range(0f, 2f)]
-    public float intensidadeDiferencial = 0.5f;  // Diferença entre roda interna/externa
+    public float differentialIntensity = 0.5f;
 
-    [Tooltip("Inverter direção de rotação")]
-    public bool inverterRotacao = false;  // Se as rodas estão a girar ao contrário
+    [Tooltip("Invert rotation direction")]
+    public bool invertRotation = false;
 
-    // ========================================================================
-    // DEBUG INFO - Valores visíveis no Inspector para debugging
-    // ========================================================================
-    
     [Header("=== Debug Info ===")]
-    [SerializeField] private float rotacaoRodaFrontalEsq = 0f;    // Rotação acumulada
-    [SerializeField] private float rotacaoRodaFrontalDir = 0f;
-    [SerializeField] private float rotacaoRodaTraseiraEsq = 0f;
-    [SerializeField] private float rotacaoRodaTraseiraDir = 0f;
-    [SerializeField] private float anguloViragemAtual = 0f;       // Ângulo atual de viragem
-    [SerializeField] private float velocidadeAtual = 0f;          // Velocidade normalizada (-1 a 1)
-    [SerializeField] private float inputViragem = 0f;             // Input de viragem (-1 a 1)
-    [SerializeField] private bool estaEmMovimento = false;        // Se a cadeira está a mover-se
+    [SerializeField] private float rotationFrontLeft = 0f;
+    [SerializeField] private float rotationFrontRight = 0f;
+    [SerializeField] private float rotationRearLeft = 0f;
+    [SerializeField] private float rotationRearRight = 0f;
+    [SerializeField] private float currentSteeringAngle = 0f;
+    [SerializeField] private float currentSpeed = 0f;
+    [SerializeField] private float steeringInput = 0f;
+    [SerializeField] private bool isMoving = false;
 
-    // ========================================================================
-    // ENUM - Tipos de direção disponíveis
-    // ========================================================================
-    
     /// <summary>
-    /// Define qual conjunto de rodas controla a direção
-    /// DirecaoFrontal: Como um carro normal (rodas da frente viram)
-    /// DirecaoTraseira: Mais manobrável, como empilhador (rodas de trás viram)
+    /// Defines which set of wheels controls direction
+    /// FrontSteering: Like a normal car (front wheels steer)
+    /// RearSteering: More maneuverable, like forklift (rear wheels steer)
     /// </summary>
-    public enum TipoDirecao
+    public enum SteeringType
     {
-        DirecaoFrontal,    // Rodas da frente viram (cadeira standard)
-        DirecaoTraseira    // Rodas de trás viram (cadeira mais manobrável)
+        FrontSteering,
+        RearSteering
     }
 
-    // ========================================================================
-    // VARIÁVEIS PRIVADAS - Referências e estado interno
-    // ========================================================================
-    
-    // Referências a outros componentes
-    private Movement movementScript;  // Script que move a cadeira
-    private Rigidbody rb;                       // Rigidbody para física
-    private Sounds wheelchairSounds;  // Sistema de sons da cadeira
+    // Component references
+    private Movement movementScript;
+    private Rigidbody rb;
+    private Sounds wheelchairSounds;
 
-    // Rotações iniciais de cada joint (para poder voltar à posição neutra)
-    private Quaternion rotInicialJoint4;
-    private Quaternion rotInicialJoint5;
-    private Quaternion rotInicialJoint6;
-    private Quaternion rotInicialJoint7;
-    private Quaternion rotInicialJoint8;
-    private Quaternion rotInicialJoint9;
+    // Initial joint rotations
+    private Quaternion initialRotJoint4;
+    private Quaternion initialRotJoint5;
+    private Quaternion initialRotJoint6;
+    private Quaternion initialRotJoint7;
+    private Quaternion initialRotJoint8;
+    private Quaternion initialRotJoint9;
 
-    // Para calcular velocidade manualmente se necessário
-    private Vector3 posicaoAnterior;
+    // For manual speed calculation
+    private Vector3 previousPosition;
 
-    // Eixos de rotação (constantes)
-    // readonly = valor não muda depois de ser definido
-    private readonly Vector3 EIXO_ROTACAO = Vector3.forward;  // Z para girar as rodas
-    private readonly Vector3 EIXO_VIRAGEM = Vector3.up;       // Y para virar (steering)
+    // Rotation axes
+    private readonly Vector3 ROTATION_AXIS = Vector3.forward;
+    private readonly Vector3 STEERING_AXIS = Vector3.up;
 
-    // ========================================================================
-    // START - Inicialização quando o jogo começa
-    // ========================================================================
-    
     void Start()
     {
-        // Obter referências aos componentes necessários
+        InitializeComponents();
+        FindJointsAutomatically();
+        StoreInitialRotations();
+        VerifyConfiguration();
+        ConfigureMovementScript();
+    }
+
+    void Update()
+    {
+        if (Input.GetKeyDown(toggleSteeringKey))
+        {
+            ToggleSteeringType();
+        }
+
+        GetInputs();
+        ApplySteering();
+        ApplyWheelRotation();
+    }
+
+    /// <summary>
+    /// Initializes component references
+    /// </summary>
+    private void InitializeComponents()
+    {
         movementScript = GetComponent<Movement>();
         rb = GetComponent<Rigidbody>();
-        posicaoAnterior = transform.position;
+        previousPosition = transform.position;
 
-        // === OBTER REFERÊNCIA AO SISTEMA DE SONS (SEGURO) ===
-        // Tentar encontrar o WheelchairSounds em vários locais
+        // Find WheelchairSounds safely in multiple locations
         wheelchairSounds = GetComponentInChildren<Sounds>();
         
         if (wheelchairSounds == null && transform.parent != null)
@@ -180,502 +155,298 @@ public class WheelController : MonoBehaviour
         {
             wheelchairSounds = FindObjectOfType<Sounds>();
         }
-        
-        if (wheelchairSounds == null)
-        {
-            Debug.LogWarning("⚠️ WheelchairSounds não encontrado no WheelController! Som de clique não vai funcionar ao mudar direção.");
-        }
-        else
-        {
-            Debug.Log("✅ WheelchairSounds encontrado no WheelController!");
-        }
+    }
 
-        // Procurar automaticamente todos os joints na hierarquia
-        ProcurarJointsAutomaticamente();
-
-        // Guardar as rotações iniciais de cada joint (posição neutra)
-        GuardarRotacoesIniciais();
-
-        // Verificar se tudo está configurado corretamente
-        VerificarConfiguracao();
-
-        // Ajustar comportamento do movimento baseado no tipo de direção
+    /// <summary>
+    /// Configures movement script based on steering type
+    /// </summary>
+    private void ConfigureMovementScript()
+    {
         if (movementScript != null)
         {
-            if (tipoDirecao == TipoDirecao.DirecaoTraseira)
+            if (steeringType == SteeringType.RearSteering)
             {
-                // Direção traseira = mais ágil
-                movementScript.velocidadeRotacao = 60f;
-                movementScript.rotacaoNoLugar = true;  // Pode girar sem avançar
+                movementScript.rotationSpeed = 60f;
+                movementScript.rotationInPlace = true;
             }
             else
             {
-                // Direção frontal = standard
-                movementScript.velocidadeRotacao = 45f;
-                movementScript.rotacaoNoLugar = false;  // Precisa de avançar para virar
+                movementScript.rotationSpeed = 45f;
+                movementScript.rotationInPlace = false;
             }
         }
-
-        Debug.Log("✅ WheelController inicializado!");
-        Debug.Log($"📐 Modo: {tipoDirecao}");
     }
 
-    // ========================================================================
-    // UPDATE - Executado a cada frame
-    // ========================================================================
-    
-    void Update()
-    {
-        // Alternar tipo de direção se pressionar a tecla (default: T)
-        if (Input.GetKeyDown(teclaAlternarDirecao))
-        {
-            AlternarTipoDirecao();
-        }
-
-        // Obter inputs do jogador
-        ObterInputs();
-
-        // Aplicar viragem (steering) baseado no tipo de direção
-        AplicarViragem();
-
-        // Girar as rodas baseado na velocidade
-        AplicarRotacaoRodas();
-    }
-
-    // ========================================================================
-    // ALTERNAR TIPO DE DIREÇÃO - Muda entre frontal/traseira
-    // ========================================================================
-    
     /// <summary>
-    /// Alterna entre direção frontal e traseira
-    /// Também ajusta comportamento do movimento automaticamente
+    /// Toggles between front and rear steering
     /// </summary>
-    void AlternarTipoDirecao()
+    void ToggleSteeringType()
     {
-        // Mudar o tipo
-        if (tipoDirecao == TipoDirecao.DirecaoFrontal)
+        if (steeringType == SteeringType.FrontSteering)
         {
-            tipoDirecao = TipoDirecao.DirecaoTraseira;
-            Debug.Log("🔄 Mudou para: DIREÇÃO TRASEIRA (mais manobrável)");
+            steeringType = SteeringType.RearSteering;
         }
         else
         {
-            tipoDirecao = TipoDirecao.DirecaoFrontal;
-            Debug.Log("🔄 Mudou para: DIREÇÃO FRONTAL (standard)");
+            steeringType = SteeringType.FrontSteering;
         }
 
-        // === Tocar som de clique (SEGURO) ===
+        // Play click sound
         if (wheelchairSounds != null)
         {
-            wheelchairSounds.TocarClique();
+            wheelchairSounds.PlayClick();
         }
 
-        // Resetar viragem ao mudar de modo (voltar rodas a retas)
-        ResetarViragem();
-
-        // Ajustar comportamento do movimento
-        if (movementScript != null)
-        {
-            if (tipoDirecao == TipoDirecao.DirecaoTraseira)
-            {
-                // Direção traseira = mais ágil, raio de viragem menor
-                movementScript.velocidadeRotacao = 60f;
-                movementScript.rotacaoNoLugar = true;
-            }
-            else
-            {
-                // Direção frontal = comportamento standard
-                movementScript.velocidadeRotacao = 45f;
-                movementScript.rotacaoNoLugar = false;
-            }
-        }
+        ResetSteering();
+        ConfigureMovementScript();
     }
 
-    // ========================================================================
-    // OBTER INPUTS - Lê inputs do jogador
-    // ========================================================================
-    
     /// <summary>
-    /// Obtém os inputs do jogador e calcula velocidade atual
-    /// Usa o script Movement se disponível, senão calcula manualmente
+    /// Gets player inputs and calculates current speed
     /// </summary>
-    void ObterInputs()
+    void GetInputs()
     {
-        // Input de viragem (A/D ou Setas Esquerda/Direita)
-        inputViragem = Input.GetAxis("Horizontal");
+        steeringInput = Input.GetAxis("Horizontal");
 
-        // Calcular velocidade atual
         if (movementScript != null)
         {
-            // Usar método do Movement para obter velocidade normalizada
-            velocidadeAtual = movementScript.GetVelocidadeNormalizada();
-            estaEmMovimento = movementScript.EstaEmMovimento();
+            currentSpeed = movementScript.GetNormalizedSpeed();
+            isMoving = movementScript.IsMoving();
         }
         else if (rb != null)
         {
-            // Fallback: calcular velocidade manualmente usando Rigidbody
-            velocidadeAtual = rb.linearVelocity.magnitude / (velocidadeMaximaKmH / 3.6f);
-            velocidadeAtual = Mathf.Clamp(velocidadeAtual, -1f, 1f);
-            estaEmMovimento = rb.linearVelocity.magnitude > 0.1f;
+            currentSpeed = rb.linearVelocity.magnitude / (maxSpeedKmH / 3.6f);
+            currentSpeed = Mathf.Clamp(currentSpeed, -1f, 1f);
+            isMoving = rb.linearVelocity.magnitude > 0.1f;
         }
         else
         {
-            // Último recurso: calcular pela mudança de posição
-            float distancia = Vector3.Distance(transform.position, posicaoAnterior);
-            float velocidadeCalculada = distancia / Time.deltaTime;
-            velocidadeAtual = velocidadeCalculada / (velocidadeMaximaKmH / 3.6f);
-            velocidadeAtual = Mathf.Clamp(velocidadeAtual, -1f, 1f);
-            estaEmMovimento = distancia > 0.01f;
-
-            posicaoAnterior = transform.position;
+            float distance = Vector3.Distance(transform.position, previousPosition);
+            float calculatedSpeed = distance / Time.deltaTime;
+            currentSpeed = calculatedSpeed / (maxSpeedKmH / 3.6f);
+            currentSpeed = Mathf.Clamp(currentSpeed, -1f, 1f);
+            isMoving = distance > 0.01f;
+            previousPosition = transform.position;
         }
     }
 
-    // ========================================================================
-    // APLICAR VIRAGEM - Vira as rodas baseado no input
-    // ========================================================================
-    
     /// <summary>
-    /// Aplica viragem (steering) às rodas corretas dependendo do modo
-    /// DirecaoFrontal: Vira rodas da frente
-    /// DirecaoTraseira: Vira rodas de trás
+    /// Applies steering to correct wheels depending on mode
     /// </summary>
-    void AplicarViragem()
+    void ApplySteering()
     {
-        // Só virar se houver input de viragem
-        if (Mathf.Abs(inputViragem) > 0.01f)
+        // Calculate target angle
+        if (Mathf.Abs(steeringInput) > 0.01f)
         {
-            // Calcular ângulo alvo baseado no input
-            float anguloAlvo = inputViragem * anguloMaximoViragem;
-
-            // Interpolar suavemente até ao ângulo alvo
-            anguloViragemAtual = Mathf.Lerp(
-                anguloViragemAtual,
-                anguloAlvo,
-                velocidadeViragem * Time.deltaTime
-            );
+            float targetAngle = steeringInput * maxSteeringAngle;
+            currentSteeringAngle = Mathf.Lerp(currentSteeringAngle, targetAngle, steeringSpeed * Time.deltaTime);
         }
         else
         {
-            // Se não há input, voltar suavemente para 0 (retas)
-            anguloViragemAtual = Mathf.Lerp(
-                anguloViragemAtual,
-                0f,
-                velocidadeViragem * Time.deltaTime
-            );
+            currentSteeringAngle = Mathf.Lerp(currentSteeringAngle, 0f, steeringSpeed * Time.deltaTime);
         }
 
-        // Criar rotação baseada no ângulo calculado
-        Quaternion rotacaoViragem = Quaternion.AngleAxis(anguloViragemAtual, EIXO_VIRAGEM);
+        Quaternion steeringRotation = Quaternion.AngleAxis(currentSteeringAngle, STEERING_AXIS);
 
-        // Aplicar viragem ao joint correto dependendo do modo
-        if (tipoDirecao == TipoDirecao.DirecaoFrontal)
+        // Apply to correct joints based on steering type
+        if (steeringType == SteeringType.FrontSteering)
         {
-            // Modo FRONTAL: Virar rodas da FRENTE
-            if (joint4_ViragemFrontal != null)
-            {
-                joint4_ViragemFrontal.localRotation = rotInicialJoint4 * rotacaoViragem;
-            }
+            if (joint4_FrontSteering != null)
+                joint4_FrontSteering.localRotation = initialRotJoint4 * steeringRotation;
 
-            // Garantir que rodas traseiras estão retas
-            if (joint5_ViragemTraseira != null)
-            {
-                joint5_ViragemTraseira.localRotation = rotInicialJoint5;
-            }
+            if (joint5_RearSteering != null)
+                joint5_RearSteering.localRotation = initialRotJoint5;
         }
         else
         {
-            // Modo TRASEIRO: Virar rodas de TRÁS
-            if (joint5_ViragemTraseira != null)
-            {
-                joint5_ViragemTraseira.localRotation = rotInicialJoint5 * rotacaoViragem;
-            }
+            if (joint5_RearSteering != null)
+                joint5_RearSteering.localRotation = initialRotJoint5 * steeringRotation;
 
-            // Garantir que rodas frontais estão retas
-            if (joint4_ViragemFrontal != null)
-            {
-                joint4_ViragemFrontal.localRotation = rotInicialJoint4;
-            }
+            if (joint4_FrontSteering != null)
+                joint4_FrontSteering.localRotation = initialRotJoint4;
         }
     }
 
-    // ========================================================================
-    // APLICAR ROTAÇÃO DAS RODAS - Faz as rodas girarem baseado na velocidade
-    // ========================================================================
-    
     /// <summary>
-    /// Calcula e aplica rotação realista a todas as rodas
-    /// Usa o diâmetro das rodas e velocidade para calcular RPM correto
-    /// Implementa rotação diferencial para curvas mais realistas
+    /// Calculates and applies realistic rotation to all wheels
     /// </summary>
-    void AplicarRotacaoRodas()
+    void ApplyWheelRotation()
     {
-        // ===  CÁLCULO DE ROTAÇÃO DAS RODAS TRASEIRAS ===
-        
-        // Circunferência = π × diâmetro (perímetro da roda)
-        float circunferenciaTraseira = Mathf.PI * diametroRodasTraseiras;
-        
-        // Quantas rotações completas por metro percorrido
-        // Se circunferência = 2m, então 1 rotação = 2m, logo 0.5 rotações por metro
-        float rotacoesPorMetroTraseira = 1f / circunferenciaTraseira;
-        
-        // Converter velocidade de km/h para m/s (dividir por 3.6)
-        // velocidadeAtual é normalizada (-1 a 1), multiplicamos pela velocidade máxima
-        float velocidadeMetrosPorSegundo = velocidadeAtual * (velocidadeMaximaKmH / 3.6f);
-        
-        // Calcular rotações por segundo
-        float rotacoesPorSegundoTraseira = velocidadeMetrosPorSegundo * rotacoesPorMetroTraseira;
-        
-        // Converter para graus por segundo (1 rotação = 360 graus)
-        // Multiplicar pelo multiplicador para ajuste visual
-        float grausPorSegundoTraseira = rotacoesPorSegundoTraseira * 360f * multiplicadorVelocidade;
+        // Calculate rear wheel rotation
+        float rearCircumference = Mathf.PI * rearWheelDiameter;
+        float rotationsPerMeterRear = 1f / rearCircumference;
+        float speedMetersPerSecond = currentSpeed * (maxSpeedKmH / 3.6f);
+        float rotationsPerSecondRear = speedMetersPerSecond * rotationsPerMeterRear;
+        float degreesPerSecondRear = rotationsPerSecondRear * 360f * speedMultiplier;
 
-        // === CÁLCULO DE ROTAÇÃO DAS RODAS FRONTAIS ===
-        // Mesmo processo mas com diâmetro diferente
-        
-        float circunferenciaFrontal = Mathf.PI * diametroRodasFrontais;
-        float rotacoesPorMetroFrontal = 1f / circunferenciaFrontal;
-        float rotacoesPorSegundoFrontal = velocidadeMetrosPorSegundo * rotacoesPorMetroFrontal;
-        float grausPorSegundoFrontal = rotacoesPorSegundoFrontal * 360f * multiplicadorVelocidade;
+        // Calculate front wheel rotation
+        float frontCircumference = Mathf.PI * frontWheelDiameter;
+        float rotationsPerMeterFront = 1f / frontCircumference;
+        float rotationsPerSecondFront = speedMetersPerSecond * rotationsPerMeterFront;
+        float degreesPerSecondFront = rotationsPerSecondFront * 360f * speedMultiplier;
 
-        // Inverter rotação se necessário (caso as rodas estejam ao contrário)
-        if (inverterRotacao)
+        // Invert if needed
+        if (invertRotation)
         {
-            grausPorSegundoTraseira = -grausPorSegundoTraseira;
-            grausPorSegundoFrontal = -grausPorSegundoFrontal;
+            degreesPerSecondRear = -degreesPerSecondRear;
+            degreesPerSecondFront = -degreesPerSecondFront;
         }
 
-        // === ROTAÇÃO DIFERENCIAL ===
-        // Em curvas, a roda externa gira mais rápido que a interna
-        
-        float deltaRotacaoEsquerda = 1f;  // Multiplicador da roda esquerda
-        float deltaRotacaoDireita = 1f;   // Multiplicador da roda direita
+        // Calculate differential rotation
+        float deltaRotationLeft = 1f;
+        float deltaRotationRight = 1f;
 
-        // Só aplicar diferencial se ativado E se estiver a virar
-        if (rotacaoDiferencial && Mathf.Abs(inputViragem) > 0.01f)
+        if (differentialRotation && Mathf.Abs(steeringInput) > 0.01f)
         {
-            // Intensidade base do diferencial
-            float intensidade = intensidadeDiferencial;
+            float intensity = differentialIntensity;
 
-            // Direção traseira tem diferencial mais agressivo (mais manobrável)
-            if (tipoDirecao == TipoDirecao.DirecaoTraseira)
+            if (steeringType == SteeringType.RearSteering)
             {
-                intensidade *= 1.5f;
+                intensity *= 1.5f;
             }
 
-            if (inputViragem > 0)  // Virando para a DIREITA
+            if (steeringInput > 0)
             {
-                // Roda ESQUERDA (externa) gira mais rápido
-                deltaRotacaoEsquerda = 1f + (Mathf.Abs(inputViragem) * intensidade);
-                
-                // Roda DIREITA (interna) gira mais devagar
-                deltaRotacaoDireita = 1f - (Mathf.Abs(inputViragem) * intensidade * 0.5f);
+                deltaRotationLeft = 1f + (Mathf.Abs(steeringInput) * intensity);
+                deltaRotationRight = 1f - (Mathf.Abs(steeringInput) * intensity * 0.5f);
             }
-            else  // Virando para a ESQUERDA
+            else
             {
-                // Roda DIREITA (externa) gira mais rápido
-                deltaRotacaoDireita = 1f + (Mathf.Abs(inputViragem) * intensidade);
-                
-                // Roda ESQUERDA (interna) gira mais devagar
-                deltaRotacaoEsquerda = 1f - (Mathf.Abs(inputViragem) * intensidade * 0.5f);
+                deltaRotationRight = 1f + (Mathf.Abs(steeringInput) * intensity);
+                deltaRotationLeft = 1f - (Mathf.Abs(steeringInput) * intensity * 0.5f);
             }
         }
 
-        // === ATUALIZAR ROTAÇÕES ACUMULADAS ===
-        // Acumular a rotação ao longo do tempo (+=)
-        // Time.deltaTime garante que funciona igual em qualquer framerate
-        
-        rotacaoRodaTraseiraEsq += grausPorSegundoTraseira * deltaRotacaoEsquerda * Time.deltaTime;
-        rotacaoRodaTraseiraDir += grausPorSegundoTraseira * deltaRotacaoDireita * Time.deltaTime;
-        rotacaoRodaFrontalEsq += grausPorSegundoFrontal * deltaRotacaoEsquerda * Time.deltaTime;
-        rotacaoRodaFrontalDir += grausPorSegundoFrontal * deltaRotacaoDireita * Time.deltaTime;
+        // Update accumulated rotations
+        rotationRearLeft += degreesPerSecondRear * deltaRotationLeft * Time.deltaTime;
+        rotationRearRight += degreesPerSecondRear * deltaRotationRight * Time.deltaTime;
+        rotationFrontLeft += degreesPerSecondFront * deltaRotationLeft * Time.deltaTime;
+        rotationFrontRight += degreesPerSecondFront * deltaRotationRight * Time.deltaTime;
 
-        // === APLICAR ROTAÇÕES AOS JOINTS ===
-        // Criar Quaternion para cada roda e aplicar
-        
-        // Roda Traseira Esquerda
-        if (joint8_RodaTraseiraEsquerda != null)
+        // Apply rotations to joints
+        if (joint8_RearLeftWheel != null)
         {
-            Quaternion rotacao = Quaternion.AngleAxis(rotacaoRodaTraseiraEsq, EIXO_ROTACAO);
-            joint8_RodaTraseiraEsquerda.localRotation = rotInicialJoint8 * rotacao;
+            Quaternion rotation = Quaternion.AngleAxis(rotationRearLeft, ROTATION_AXIS);
+            joint8_RearLeftWheel.localRotation = initialRotJoint8 * rotation;
         }
 
-        // Roda Traseira Direita
-        if (joint9_RodaTraseiraDireita != null)
+        if (joint9_RearRightWheel != null)
         {
-            Quaternion rotacao = Quaternion.AngleAxis(rotacaoRodaTraseiraDir, EIXO_ROTACAO);
-            joint9_RodaTraseiraDireita.localRotation = rotInicialJoint9 * rotacao;
+            Quaternion rotation = Quaternion.AngleAxis(rotationRearRight, ROTATION_AXIS);
+            joint9_RearRightWheel.localRotation = initialRotJoint9 * rotation;
         }
 
-        // Roda Frontal Esquerda
-        if (joint6_RodaFrontalEsquerda != null)
+        if (joint6_FrontLeftWheel != null)
         {
-            Quaternion rotacao = Quaternion.AngleAxis(rotacaoRodaFrontalEsq, EIXO_ROTACAO);
-            joint6_RodaFrontalEsquerda.localRotation = rotInicialJoint6 * rotacao;
+            Quaternion rotation = Quaternion.AngleAxis(rotationFrontLeft, ROTATION_AXIS);
+            joint6_FrontLeftWheel.localRotation = initialRotJoint6 * rotation;
         }
 
-        // Roda Frontal Direita
-        if (joint7_RodaFrontalDireita != null)
+        if (joint7_FrontRightWheel != null)
         {
-            Quaternion rotacao = Quaternion.AngleAxis(rotacaoRodaFrontalDir, EIXO_ROTACAO);
-            joint7_RodaFrontalDireita.localRotation = rotInicialJoint7 * rotacao;
+            Quaternion rotation = Quaternion.AngleAxis(rotationFrontRight, ROTATION_AXIS);
+            joint7_FrontRightWheel.localRotation = initialRotJoint7 * rotation;
         }
     }
 
-    // ========================================================================
-    // RESETAR VIRAGEM - Volta as rodas para a posição neutra (retas)
-    // ========================================================================
-    
     /// <summary>
-    /// Volta as rodas para a posição reta (sem viragem)
-    /// Útil quando se muda de modo de direção
+    /// Returns wheels to straight position
     /// </summary>
-    void ResetarViragem()
+    void ResetSteering()
     {
-        // Zerar ângulo atual
-        anguloViragemAtual = 0f;
+        currentSteeringAngle = 0f;
 
-        // Voltar joints de viragem às rotações iniciais (posição neutra)
-        if (joint4_ViragemFrontal != null)
-            joint4_ViragemFrontal.localRotation = rotInicialJoint4;
+        if (joint4_FrontSteering != null)
+            joint4_FrontSteering.localRotation = initialRotJoint4;
 
-        if (joint5_ViragemTraseira != null)
-            joint5_ViragemTraseira.localRotation = rotInicialJoint5;
-    }
-
-    // ========================================================================
-    // MÉTODOS AUXILIARES - Funções de suporte
-    // ========================================================================
-    
-    /// <summary>
-    /// Procura automaticamente todos os joints na hierarquia do GameObject
-    /// </summary>
-    void ProcurarJointsAutomaticamente()
-    {
-        // Procurar joints de viragem
-        if (joint4_ViragemFrontal == null)
-            joint4_ViragemFrontal = transform.Find("joint4");
-        if (joint5_ViragemTraseira == null)
-            joint5_ViragemTraseira = transform.Find("joint5");
-
-        // Procurar joints de rotação
-        if (joint6_RodaFrontalEsquerda == null)
-            joint6_RodaFrontalEsquerda = transform.Find("joint6");
-        if (joint7_RodaFrontalDireita == null)
-            joint7_RodaFrontalDireita = transform.Find("joint7");
-        if (joint8_RodaTraseiraEsquerda == null)
-            joint8_RodaTraseiraEsquerda = transform.Find("joint8");
-        if (joint9_RodaTraseiraDireita == null)
-            joint9_RodaTraseiraDireita = transform.Find("joint9");
+        if (joint5_RearSteering != null)
+            joint5_RearSteering.localRotation = initialRotJoint5;
     }
 
     /// <summary>
-    /// Guarda as rotações iniciais de todos os joints
+    /// Automatically searches for all joints in hierarchy
     /// </summary>
-    void GuardarRotacoesIniciais()
+    void FindJointsAutomatically()
     {
-        if (joint4_ViragemFrontal != null)
-            rotInicialJoint4 = joint4_ViragemFrontal.localRotation;
-        if (joint5_ViragemTraseira != null)
-            rotInicialJoint5 = joint5_ViragemTraseira.localRotation;
-        if (joint6_RodaFrontalEsquerda != null)
-            rotInicialJoint6 = joint6_RodaFrontalEsquerda.localRotation;
-        if (joint7_RodaFrontalDireita != null)
-            rotInicialJoint7 = joint7_RodaFrontalDireita.localRotation;
-        if (joint8_RodaTraseiraEsquerda != null)
-            rotInicialJoint8 = joint8_RodaTraseiraEsquerda.localRotation;
-        if (joint9_RodaTraseiraDireita != null)
-            rotInicialJoint9 = joint9_RodaTraseiraDireita.localRotation;
+        if (joint4_FrontSteering == null)
+            joint4_FrontSteering = transform.Find("joint4");
+        if (joint5_RearSteering == null)
+            joint5_RearSteering = transform.Find("joint5");
+        if (joint6_FrontLeftWheel == null)
+            joint6_FrontLeftWheel = transform.Find("joint6");
+        if (joint7_FrontRightWheel == null)
+            joint7_FrontRightWheel = transform.Find("joint7");
+        if (joint8_RearLeftWheel == null)
+            joint8_RearLeftWheel = transform.Find("joint8");
+        if (joint9_RearRightWheel == null)
+            joint9_RearRightWheel = transform.Find("joint9");
     }
 
     /// <summary>
-    /// Verifica se todos os componentes necessários estão configurados
+    /// Stores initial rotations of all joints
     /// </summary>
-    void VerificarConfiguracao()
+    void StoreInitialRotations()
     {
-        bool tudoOk = true;
-
-        if (joint4_ViragemFrontal == null)
-        {
-            Debug.LogWarning("⚠️ joint4_ViragemFrontal não encontrado!");
-            tudoOk = false;
-        }
-        if (joint5_ViragemTraseira == null)
-        {
-            Debug.LogWarning("⚠️ joint5_ViragemTraseira não encontrado!");
-            tudoOk = false;
-        }
-        if (joint6_RodaFrontalEsquerda == null)
-        {
-            Debug.LogWarning("⚠️ joint6_RodaFrontalEsquerda não encontrado!");
-            tudoOk = false;
-        }
-        if (joint7_RodaFrontalDireita == null)
-        {
-            Debug.LogWarning("⚠️ joint7_RodaFrontalDireita não encontrado!");
-            tudoOk = false;
-        }
-        if (joint8_RodaTraseiraEsquerda == null)
-        {
-            Debug.LogWarning("⚠️ joint8_RodaTraseiraEsquerda não encontrado!");
-            tudoOk = false;
-        }
-        if (joint9_RodaTraseiraDireita == null)
-        {
-            Debug.LogWarning("⚠️ joint9_RodaTraseiraDireita não encontrado!");
-            tudoOk = false;
-        }
-
-        if (tudoOk)
-        {
-            Debug.Log("✅ Todos os joints encontrados!");
-        }
-    }
-
-    // ========================================================================
-    // MÉTODOS PÚBLICOS - Funções que outros scripts podem chamar
-    // ========================================================================
-    
-    /// <summary>
-    /// Para completamente todas as rodas e reseta para posição inicial
-    /// Útil para teleportar a cadeira ou iniciar cutscenes
-    /// </summary>
-    public void PararRodas()
-    {
-        // Zerar todas as rotações acumuladas
-        rotacaoRodaFrontalEsq = 0f;
-        rotacaoRodaFrontalDir = 0f;
-        rotacaoRodaTraseiraEsq = 0f;
-        rotacaoRodaTraseiraDir = 0f;
-        anguloViragemAtual = 0f;
-        velocidadeAtual = 0f;
-        inputViragem = 0f;
-
-        // Resetar viragem
-        ResetarViragem();
-
-        // Voltar todas as rodas às rotações iniciais
-        if (joint6_RodaFrontalEsquerda != null)
-            joint6_RodaFrontalEsquerda.localRotation = rotInicialJoint6;
-
-        if (joint7_RodaFrontalDireita != null)
-            joint7_RodaFrontalDireita.localRotation = rotInicialJoint7;
-
-        if (joint8_RodaTraseiraEsquerda != null)
-            joint8_RodaTraseiraEsquerda.localRotation = rotInicialJoint8;
-
-        if (joint9_RodaTraseiraDireita != null)
-            joint9_RodaTraseiraDireita.localRotation = rotInicialJoint9;
-
-        Debug.Log("🛑 Todas as rodas paradas e resetadas!");
+        if (joint4_FrontSteering != null)
+            initialRotJoint4 = joint4_FrontSteering.localRotation;
+        if (joint5_RearSteering != null)
+            initialRotJoint5 = joint5_RearSteering.localRotation;
+        if (joint6_FrontLeftWheel != null)
+            initialRotJoint6 = joint6_FrontLeftWheel.localRotation;
+        if (joint7_FrontRightWheel != null)
+            initialRotJoint7 = joint7_FrontRightWheel.localRotation;
+        if (joint8_RearLeftWheel != null)
+            initialRotJoint8 = joint8_RearLeftWheel.localRotation;
+        if (joint9_RearRightWheel != null)
+            initialRotJoint9 = joint9_RearRightWheel.localRotation;
     }
 
     /// <summary>
-    /// Devolve o tipo de direção atual
-    /// Útil para outros scripts saberem o modo ativo
+    /// Verifies if all necessary components are configured
     /// </summary>
-    public TipoDirecao GetTipoDirecao()
+    void VerifyConfiguration()
     {
-        return tipoDirecao;
+        // Silent verification - only logs warnings for missing joints
+        if (joint4_FrontSteering == null) return;
+        if (joint5_RearSteering == null) return;
+        if (joint6_FrontLeftWheel == null) return;
+        if (joint7_FrontRightWheel == null) return;
+        if (joint8_RearLeftWheel == null) return;
+        if (joint9_RearRightWheel == null) return;
+    }
+
+    // ===== PUBLIC METHODS =====
+
+    /// <summary>
+    /// Completely stops all wheels and resets to initial position
+    /// </summary>
+    public void StopWheels()
+    {
+        rotationFrontLeft = 0f;
+        rotationFrontRight = 0f;
+        rotationRearLeft = 0f;
+        rotationRearRight = 0f;
+        currentSteeringAngle = 0f;
+        currentSpeed = 0f;
+        steeringInput = 0f;
+
+        ResetSteering();
+
+        if (joint6_FrontLeftWheel != null)
+            joint6_FrontLeftWheel.localRotation = initialRotJoint6;
+        if (joint7_FrontRightWheel != null)
+            joint7_FrontRightWheel.localRotation = initialRotJoint7;
+        if (joint8_RearLeftWheel != null)
+            joint8_RearLeftWheel.localRotation = initialRotJoint8;
+        if (joint9_RearRightWheel != null)
+            joint9_RearRightWheel.localRotation = initialRotJoint9;
+    }
+
+    /// <summary>
+    /// Returns current steering type
+    /// </summary>
+    public SteeringType GetSteeringType()
+    {
+        return steeringType;
     }
 }

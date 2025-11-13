@@ -1,80 +1,78 @@
 using UnityEngine;
 using System.Collections.Generic;
 
+/// <summary>
+/// Fixes first-person wheelchair view by making materials visible from both sides
+/// and hiding specific parts
+/// </summary>
 public class WheelchairViewFix : MonoBehaviour
 {
-    [Header("=== Configuração ===")]
-    [Tooltip("Câmara principal")]
-    public Camera cameraPrincipal;
+    [Header("=== Configuration ===")]
+    [Tooltip("Reference to the main camera")]
+    public Camera mainCamera;
     
-    [Tooltip("Lista de renderers do corpo (arrasta aqui todos os que quiseres)")]
-    public List<SkinnedMeshRenderer> renderersDoCorpo = new List<SkinnedMeshRenderer>();
+    [Tooltip("List of body renderers that will be visible from both sides")]
+    public List<SkinnedMeshRenderer> bodyRenderers = new List<SkinnedMeshRenderer>();
     
-    [Header("=== Bones para Esconder ===")]
-    [Tooltip("Arrasta aqui os bones/ossos que queres esconder")]
-    public List<Transform> bonesParaEsconder = new List<Transform>();
+    [Header("=== Bones to Hide ===")]
+    [Tooltip("List of transforms (bones) that will be hidden by reducing scale")]
+    public List<Transform> bonesToHide = new List<Transform>();
     
-    [Tooltip("Tamanho quando escondido (0.001 = quase invisível)")]
+    [Tooltip("Scale applied to hidden bones (smaller = more invisible)")]
     [Range(0.001f, 1f)]
-    public float tamanhoEscondido = 0.001f;
-    
-    // Guardar tamanhos originais
-    private Dictionary<Transform, Vector3> tamanhosOriginais = new Dictionary<Transform, Vector3>();
+    public float hiddenScale = 0.001f;
     
     void Start()
     {
-        ConfigurarCamara();
-        AplicarDuplaFaceATodos();
-        EsconderBones();
+        SetupCamera();
+        ApplyDoubleSidedRendering();
+        HideBones();
     }
     
-    void ConfigurarCamara()
+    /// <summary>
+    /// Configures camera to render very close objects
+    /// </summary>
+    private void SetupCamera()
     {
-        // Se não foi definida, procura a câmara filha
-        if (cameraPrincipal == null)
+        if (mainCamera == null)
         {
-            cameraPrincipal = GetComponentInChildren<Camera>();
+            mainCamera = GetComponentInChildren<Camera>();
         }
         
-        // Ajustar câmara para ver objetos muito próximos
-        if (cameraPrincipal != null)
+        if (mainCamera != null)
         {
-            cameraPrincipal.nearClipPlane = 0.01f;
+            mainCamera.nearClipPlane = 0.01f;
         }
     }
     
-    void AplicarDuplaFaceATodos()
+    /// <summary>
+    /// Applies double-sided rendering to all body renderers
+    /// Allows materials to be visible from inside in first person
+    /// </summary>
+    private void ApplyDoubleSidedRendering()
     {
-        // Fazer com que os renderers sejam visíveis dos dois lados
-        foreach (var renderer in renderersDoCorpo)
+        foreach (var renderer in bodyRenderers)
         {
             if (renderer != null)
             {
                 Material mat = new Material(renderer.material);
-                mat.SetInt("_Cull", 0); // 0 = ver dos dois lados
+                mat.SetInt("_Cull", 0);
                 renderer.material = mat;
             }
         }
-        
-        Debug.Log($"Vista corrigida para {renderersDoCorpo.Count} partes do corpo!");
     }
     
-    void EsconderBones()
+    /// <summary>
+    /// Hides bones from list by drastically reducing their scale
+    /// </summary>
+    private void HideBones()
     {
-        foreach (var bone in bonesParaEsconder)
+        foreach (var bone in bonesToHide)
         {
             if (bone != null)
             {
-                // Guardar tamanho original
-                tamanhosOriginais[bone] = bone.localScale;
-                
-                // Esconder reduzindo o tamanho
-                bone.localScale = Vector3.one * tamanhoEscondido;
-                
-                Debug.Log($"Bone escondido: {bone.name}");
+                bone.localScale = Vector3.one * hiddenScale;
             }
         }
     }
-    
-    
 }

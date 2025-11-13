@@ -3,552 +3,638 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// Controlador principal de movimento da cadeira de rodas elétrica
-/// Responsável por: input, velocidade, aceleração, rotação e física
+/// Main electric wheelchair movement controller
+/// Responsible for: input, speed, acceleration, rotation and physics
 /// </summary>
 public class Movement : MonoBehaviour
 {
-    [Header("=== Configurações de Velocidade ===")]
-    [Tooltip("Velocidade máxima em modo normal (km/h)")]
-    public float velocidadeMaximaNormal = 6f;
+    [Header("=== Speed Settings ===")]
+    [Tooltip("Maximum speed in normal mode (km/h)")]
+    public float maxSpeedNormal = 6f;
 
-    [Tooltip("Velocidade máxima em modo lento/interior (km/h)")]
-    public float velocidadeMaximaLenta = 3f;
+    [Tooltip("Maximum speed in slow/interior mode (km/h)")]
+    public float maxSpeedSlow = 3f;
 
-    [Tooltip("Velocidade de marcha-atrás (km/h)")]
-    public float velocidadeMarchaAtras = 2f;
+    [Tooltip("Reverse speed (km/h)")]
+    public float reverseSpeed = 2f;
 
-    [Header("=== Configurações de Aceleração ===")]
-    [Tooltip("Tempo para atingir velocidade máxima (segundos)")]
-    public float tempoAceleracao = 2f;
+    [Header("=== Acceleration Settings ===")]
+    [Tooltip("Time to reach maximum speed (seconds)")]
+    public float accelerationTime = 2f;
 
-    [Tooltip("Tempo para parar completamente (segundos)")]
-    public float tempoTravagem = 1.5f;
+    [Tooltip("Time to stop completely (seconds)")]
+    public float brakingTime = 1.5f;
 
-    [Header("=== Configurações de Rotação ===")]
-    [Tooltip("Velocidade de rotação (graus por segundo)")]
-    public float velocidadeRotacao = 45f;
+    [Header("=== Rotation Settings ===")]
+    [Tooltip("Rotation speed (degrees per second)")]
+    public float rotationSpeed = 45f;
 
-    [Tooltip("Pode rodar sem se mover para frente/trás? (Só funciona com direção frontal)")]
-    public bool rotacaoNoLugar = false;
+    [Tooltip("Can rotate without moving forward/backward? (Only works with front steering)")]
+    public bool rotationInPlace = false;
 
-    [Header("=== Modos de Condução ===")]
-    [Tooltip("Modo atual de velocidade")]
-    public ModosVelocidade modoAtual = ModosVelocidade.Normal;
+    [Header("=== Driving Modes ===")]
+    [Tooltip("Current speed mode")]
+    public SpeedMode currentMode = SpeedMode.Normal;
 
-    // --- NOVA SECÇÃO DE SONS ---
-    [Header("=== Sons de Efeitos (One-Shot) ===")]
-    [Tooltip("O 'lançador' de áudio para efeitos curtos (cliques, colisões)")]
-    public AudioSource audioEfeitos;
+    [Header("=== Effect Sounds (One-Shot) ===")]
+    [Tooltip("Audio launcher for short effects (clicks, collisions)")]
+    public AudioSource effectsAudio;
 
-    [Tooltip("Som a tocar quando muda o modo de velocidade (teclas 1, 2)")]
-    public AudioClip somMudarModo;
+    [Tooltip("Sound to play when changing speed mode (keys 1, 2)")]
+    public AudioClip modeChangeSound;
 
-    [Tooltip("Som a tocar quando muda o tipo de direção (tecla T)")]
-    public AudioClip somMudarDirecao;
+    [Tooltip("Sound to play when changing steering type (key T)")]
+    public AudioClip steeringChangeSound;
 
-    [Tooltip("Som a tocar quando bate com força")]
-    public AudioClip somColisaoForte;
+    [Tooltip("Sound to play when hitting hard")]
+    public AudioClip hardCollisionSound;
 
-    [Tooltip("Som a tocar quando começa a deslizar numa parede")]
-    public AudioClip somDeslizarInicio;
+    [Tooltip("Sound to play when starting to slide on wall")]
+    public AudioClip slideStartSound;
 
-    [Tooltip("Velocidade mínima (em m/s) para o som de colisão tocar (opcional)")]
-    public float velMinimaColisao = 0.8f;
-    // --- FIM DA NOVA SECÇÃO ---
+    [Tooltip("Minimum speed (in m/s) for collision sound to play (optional)")]
+    public float minCollisionSpeed = 0.8f;
 
-    [Header("=== Física e Limites ===")]
-    [Tooltip("Inclinação máxima que consegue subir (graus)")]
-    public float inclinacaoMaxima = 10f;
+    [Header("=== Physics and Limits ===")]
+    [Tooltip("Maximum slope it can climb (degrees)")]
+    public float maxSlope = 10f;
 
-    [Tooltip("Gravidade aplicada")]
-    public float gravidade = -9.81f;
+    [Tooltip("Applied gravity")]
+    public float gravity = -9.81f;
 
-    [Header("=== Estado Atual (Debug) ===")]
-    [SerializeField] private float velocidadeAtual = 0f;
-    [SerializeField] private float velocidadeDesejada = 0f;
-    [SerializeField] private bool travaoDeEmergencia = false;
-    [SerializeField] private string tipoDirecaoAtual = "Frontal";
-    [SerializeField] private float eficienciaRotacao = 100f;
+    [Header("=== Current State (Debug) ===")]
+    [SerializeField] private float currentSpeed = 0f;
+    [SerializeField] private float targetSpeed = 0f;
+    [SerializeField] private bool emergencyBrake = false;
+    [SerializeField] private string currentSteeringType = "Frontal";
+    [SerializeField] private float rotationEfficiency = 100f;
 
-    // Componentes
+    // Components
     private CharacterController controller;
-    private Vector3 movimentoVelocidade;
+    private Vector3 movementVelocity;
     private WheelController wheelController;
+    private CollisionSystem collisionSystem;
 
-    // Sistema de colisão (separado)
-    private CollisionSystem sistemaColisao;
+    // Smoothed input system
+    private float smoothedVerticalInput = 0f;
+    private float smoothedHorizontalInput = 0f;
 
-    // Sistema de input suavizado
-    private float inputVerticalSuavizado = 0f;
-    private float inputHorizontalSuavizado = 0f;
+    // Rear steering - feedback
+    private bool tryingToTurnStationary = false;
+    private float tryingToTurnTime = 0f;
 
-    // Direção traseira - feedback
-    private bool tentandoVirarParado = false;
-    private float tempoTentandoVirar = 0f;
+    // Public variable for sound script to know if player is accelerating
+    [HideInInspector]
+    public bool playerIsAccelerating = false;
 
-    // Variável pública para o script de som saber se o jogador está a acelerar
-    [HideInInspector] // Esconde do Inspetor, mas é pública
-    public bool jogadorEstaAcelerando = false;
+    // Cache for sounds (to not repeat)
+    private bool slidingCache = false;
+    private string steeringTypeCache = "Frontal";
+    private bool inCollisionCache = false;
 
-    // Cache para sons (para não repetir)
-    private bool estaDeslizandoCache = false;
-    private string tipoDirecaoCache = "Frontal";
-    private bool estaEmColisaoCache = false;
-
-
-    public enum ModosVelocidade
+    public enum SpeedMode
     {
-        Lento,
+        Slow,
         Normal,
-        Desligado
+        Off
     }
 
     void Start()
     {
-        // Configurar o CharacterController
+        SetupCharacterController();
+        SetupComponents();
+        ConvertSpeeds();
+        InitializeCache();
+    }
+
+    /// <summary>
+    /// Configures CharacterController with optimized values for realistic contact
+    /// </summary>
+    private void SetupCharacterController()
+    {
         controller = GetComponent<CharacterController>();
         if (controller == null)
         {
             controller = gameObject.AddComponent<CharacterController>();
         }
 
-        // === VALORES ABSOLUTOS MÍNIMOS ===
+        // Optimized values for realistic obstacle contact
         controller.height = 1.4f;
-        controller.radius = 0.2f;  // 20cm - MÍNIMO para não atravessar paredes
+        controller.radius = 0.2f;
         controller.center = new Vector3(0, 0.7f, 0);
-
-        // === SkinWidth ZERO (ou quase) ===
-        controller.skinWidth = 0.0001f;  // 0.1mm - PRATICAMENTE ZERO!
-        controller.minMoveDistance = 0.0f;  // ZERO absoluto
+        controller.skinWidth = 0.0001f;
+        controller.minMoveDistance = 0.0f;
         controller.stepOffset = 0.1f;
 
-        // Elevar um pouco no início
+        // Slightly elevate at start to avoid floor collision
         transform.position += Vector3.up * 0.1f;
+    }
 
-        // Obter referência ao wheel controller
+    /// <summary>
+    /// Initializes references to necessary components
+    /// </summary>
+    private void SetupComponents()
+    {
         wheelController = GetComponent<WheelController>();
 
-        // === INICIALIZAR SISTEMA DE COLISÃO ===
-        sistemaColisao = GetComponent<CollisionSystem>();
-        if (sistemaColisao == null)
+        collisionSystem = GetComponent<CollisionSystem>();
+        if (collisionSystem == null)
         {
-            sistemaColisao = gameObject.AddComponent<CollisionSystem>();
+            collisionSystem = gameObject.AddComponent<CollisionSystem>();
         }
-        sistemaColisao.Inicializar(controller, transform);
+        collisionSystem.Initialize(controller, transform);
+    }
 
-        // Converter km/h para m/s
-        velocidadeMaximaNormal = velocidadeMaximaNormal / 3.6f;
-        velocidadeMaximaLenta = velocidadeMaximaLenta / 3.6f;
-        velocidadeMarchaAtras = velocidadeMarchaAtras / 3.6f;
+    /// <summary>
+    /// Converts speeds from km/h to m/s (internally used format)
+    /// </summary>
+    private void ConvertSpeeds()
+    {
+        maxSpeedNormal = maxSpeedNormal / 3.6f;
+        maxSpeedSlow = maxSpeedSlow / 3.6f;
+        reverseSpeed = reverseSpeed / 3.6f;
+    }
 
-        // Cache inicial da direção
+    /// <summary>
+    /// Initializes cache values for state change detection
+    /// </summary>
+    private void InitializeCache()
+    {
         if (wheelController != null)
         {
-            tipoDirecaoCache = wheelController.GetTipoDirecao().ToString();
+            steeringTypeCache = wheelController.GetSteeringType().ToString();
         }
-
-        Debug.Log("✅ Cadeira de Rodas (Movement.cs) inicializada!");
     }
+
     void Update()
     {
-        // Atualizar tipo de direção para debug
-        if (wheelController != null)
+        UpdateSteeringState();
+        collisionSystem.Update();
+        ProcessSoundEffects();
+        UpdateTimers();
+
+        ManageModes();
+
+        if (currentMode != SpeedMode.Off)
         {
-            tipoDirecaoAtual = wheelController.GetTipoDirecao().ToString();
-
-            // --- LÓGICA DE SOM (MUDAR DIREÇÃO) ---
-            if (tipoDirecaoAtual != tipoDirecaoCache)
-            {
-                TocarSom(somMudarDirecao);
-                tipoDirecaoCache = tipoDirecaoAtual; // Atualiza o cache
-            }
-            // --- FIM DA LÓGICA ---
-        }
-
-        // === ATUALIZAR SISTEMA DE COLISÃO ===
-        sistemaColisao.Atualizar();
-
-
-        // --- LÓGICA DE SOM (DESLIZAR) ---
-        bool aDeslizarAgora = sistemaColisao.EstaDeslizandoParede;
-        if (aDeslizarAgora && !estaDeslizandoCache)
-        {
-            TocarSom(somDeslizarInicio); // Toca só no início do deslize
-        }
-        estaDeslizandoCache = aDeslizarAgora; // Atualiza o cache
-
-
-        // --- LÓGICA DE SOM (COLISÃO) ---
-        // 1. Definir o que é "Estar em Colisão"
-        bool emColisaoAgora = (sistemaColisao.EstaEmColisao || sistemaColisao.EstaBloqueadoFrente || sistemaColisao.EstaBloqueadoTras);
-        
-        // 2. O deslize tem prioridade (para não tocar os dois sons ao mesmo tempo)
-        if (aDeslizarAgora)
-        {
-            emColisaoAgora = false;
-        }
-
-        // 3. Tocar o som APENAS NO FRAME em que o estado muda
-        if (emColisaoAgora && !estaEmColisaoCache)
-        {
-            // Opcional: Filtro de velocidade (se não quiseres som ao "encostar")
-            // if (Mathf.Abs(velocidadeAtual) > velMinimaColisao)
-            // {
-                 TocarSom(somColisaoForte);
-            // }
-        }
-        
-        // 4. Atualizar o cache de colisão para o próximo frame
-        estaEmColisaoCache = emColisaoAgora;
-        // --- FIM DA LÓGICA ---
-
-
-        // Atualizar temporizador do aviso de direção traseira
-        if (tempoTentandoVirar > 0)
-        {
-            tempoTentandoVirar -= Time.deltaTime;
-        }
-
-        // Mudar modos com teclas numéricas
-        GerirModos();
-
-        // Processar movimento apenas se não estiver em modo desligado
-        if (modoAtual != ModosVelocidade.Desligado)
-        {
-            ProcessarInputRealista();
-            AplicarMovimentoRealista();
+            ProcessRealisticInput();
+            ApplyRealisticMovement();
         }
         else
         {
-            PararDeEmergencia();
-            // CRÍTICO: Mesmo com travão ativo, aplicar gravidade ao CharacterController
-            AplicarMovimentoVertical();
+            EmergencyStop();
+            ApplyVerticalMovement();
         }
 
-        // Aplicar sempre a gravidade
-        AplicarGravidade();
+        ApplyGravity();
     }
 
-    void GerirModos()
+    /// <summary>
+    /// Updates current steering type for reference
+    /// </summary>
+    private void UpdateSteeringState()
     {
-        // Tecla 1: Modo Lento
+        if (wheelController != null)
+        {
+            currentSteeringType = wheelController.GetSteeringType().ToString();
+        }
+    }
+
+    /// <summary>
+    /// Processes and plays sound effects based on state changes
+    /// </summary>
+    private void ProcessSoundEffects()
+    {
+        // Steering change sound
+        if (currentSteeringType != steeringTypeCache)
+        {
+            PlaySound(steeringChangeSound);
+            steeringTypeCache = currentSteeringType;
+        }
+
+        // Slide start sound
+        bool slidingNow = collisionSystem.IsWallSliding;
+        if (slidingNow && !slidingCache)
+        {
+            PlaySound(slideStartSound);
+        }
+        slidingCache = slidingNow;
+
+        // Collision sound (sliding has priority)
+        bool inCollisionNow = (collisionSystem.IsInCollision || 
+                               collisionSystem.IsFrontBlocked || 
+                               collisionSystem.IsBackBlocked);
+
+        if (slidingNow)
+        {
+            inCollisionNow = false;
+        }
+
+        if (inCollisionNow && !inCollisionCache)
+        {
+            PlaySound(hardCollisionSound);
+        }
+
+        inCollisionCache = inCollisionNow;
+    }
+
+    /// <summary>
+    /// Updates warning and feedback timers
+    /// </summary>
+    private void UpdateTimers()
+    {
+        if (tryingToTurnTime > 0)
+        {
+            tryingToTurnTime -= Time.deltaTime;
+        }
+    }
+
+    /// <summary>
+    /// Manages speed mode switching through keyboard input
+    /// </summary>
+    void ManageModes()
+    {
+        // Key 1: Slow Mode
         if (Input.GetKeyDown(KeyCode.Alpha1))
         {
-            modoAtual = ModosVelocidade.Lento;
-            Debug.Log("Modo: LENTO (Interior) - 3 km/h");
-            TocarSom(somMudarModo); // --- TOCAR SOM ---
+            currentMode = SpeedMode.Slow;
+            PlaySound(modeChangeSound);
         }
-        // Tecla 2: Modo Normal
+        // Key 2: Normal Mode
         else if (Input.GetKeyDown(KeyCode.Alpha2))
         {
-            modoAtual = ModosVelocidade.Normal;
-            Debug.Log("Modo: NORMAL - 6 km/h");
-            TocarSom(somMudarModo); // --- TOCAR SOM ---
+            currentMode = SpeedMode.Normal;
+            PlaySound(modeChangeSound);
         }
-        // Espaço: Travão de emergência
+        // Space: Emergency brake
         else if (Input.GetKeyDown(KeyCode.Space))
         {
-            modoAtual = ModosVelocidade.Desligado;
-            travaoDeEmergencia = true;
-            Debug.Log("TRAVÃO DE EMERGÊNCIA ATIVADO!");
+            currentMode = SpeedMode.Off;
+            emergencyBrake = true;
         }
-        // Soltar espaço: Voltar ao modo normal
+        // Release space: Return to normal mode
         else if (Input.GetKeyUp(KeyCode.Space))
         {
-            modoAtual = ModosVelocidade.Normal;
-            travaoDeEmergencia = false;
+            currentMode = SpeedMode.Normal;
+            emergencyBrake = false;
         }
     }
 
-    void ProcessarInputRealista()
+    /// <summary>
+    /// Processes player input applying smoothing and realistic physics
+    /// </summary>
+    void ProcessRealisticInput()
     {
-        // Obter input do jogador
-        float inputVertical = Input.GetAxis("Vertical");
-        float inputHorizontal = Input.GetAxis("Horizontal");
+        // Get player input
+        float verticalInput = Input.GetAxis("Vertical");
+        float horizontalInput = Input.GetAxis("Horizontal");
 
-        // Verifica se o input (antes de ser suavizado) é significativo
-        jogadorEstaAcelerando = (Mathf.Abs(inputVertical) > 0.1f);
+        // Update acceleration flag for sound system
+        playerIsAccelerating = (Mathf.Abs(verticalInput) > 0.1f);
 
-        // Suavizar o input
-        float suavizacao = 3f;
-        inputVerticalSuavizado = Mathf.Lerp(inputVerticalSuavizado, inputVertical, suavizacao * Time.deltaTime);
-        inputHorizontalSuavizado = Mathf.Lerp(inputHorizontalSuavizado, inputHorizontal, suavizacao * Time.deltaTime);
+        // Apply input smoothing
+        float smoothing = 3f;
+        smoothedVerticalInput = Mathf.Lerp(smoothedVerticalInput, verticalInput, smoothing * Time.deltaTime);
+        smoothedHorizontalInput = Mathf.Lerp(smoothedHorizontalInput, horizontalInput, smoothing * Time.deltaTime);
 
-        // Determinar velocidade máxima baseada no modo
-        float velocidadeMaxima = modoAtual == ModosVelocidade.Lento ?
-                                 velocidadeMaximaLenta : velocidadeMaximaNormal;
+        // Determine maximum speed based on mode
+        float maxSpeed = currentMode == SpeedMode.Slow ?
+                         maxSpeedSlow : maxSpeedNormal;
 
-        // === SISTEMA DE BLOQUEIO REALISTA ===
+        // Apply realistic collision blocking system
+        ApplyCollisionBlocking(ref verticalInput, ref maxSpeed);
 
-        // Se está bloqueado à frente, NÃO permite movimento frontal
-        if (sistemaColisao.EstaBloqueadoFrente && inputVerticalSuavizado > 0)
+        // Calculate acceleration and deceleration
+        ApplyAccelerationDeceleration(maxSpeed);
+
+        // Process rotation
+        ProcessRotation(smoothedHorizontalInput);
+    }
+
+    /// <summary>
+    /// Applies movement blocking based on detected collisions
+    /// </summary>
+    private void ApplyCollisionBlocking(ref float verticalInput, ref float maxSpeed)
+    {
+        // Front blocking - prevents forward movement
+        if (collisionSystem.IsFrontBlocked && smoothedVerticalInput > 0)
         {
-            inputVerticalSuavizado = 0;
-            velocidadeDesejada = 0;
+            smoothedVerticalInput = 0;
+            targetSpeed = 0;
 
-            if (inputVertical > 0.5f)
+            // Apply small pushback if trying to force
+            if (verticalInput > 0.5f)
             {
-                velocidadeAtual = Mathf.Max(velocidadeAtual - 0.5f * Time.deltaTime, -0.05f);
+                currentSpeed = Mathf.Max(currentSpeed - 0.5f * Time.deltaTime, -0.05f);
             }
         }
-        // Se está bloqueado atrás, NÃO permite marcha-atrás
-        else if (sistemaColisao.EstaBloqueadoTras && inputVerticalSuavizado < 0)
+        // Back blocking - prevents reverse
+        else if (collisionSystem.IsBackBlocked && smoothedVerticalInput < 0)
         {
-            inputVerticalSuavizado = 0;
-            velocidadeDesejada = 0;
+            smoothedVerticalInput = 0;
+            targetSpeed = 0;
         }
-        // Movimento normal quando não bloqueado
+        // Normal movement when not blocked
         else
         {
-            if (inputVerticalSuavizado < 0)
+            // Use reverse speed when input is negative
+            if (smoothedVerticalInput < 0)
             {
-                velocidadeMaxima = velocidadeMarchaAtras;
+                maxSpeed = reverseSpeed;
             }
 
-            velocidadeDesejada = inputVerticalSuavizado * velocidadeMaxima;
+            targetSpeed = smoothedVerticalInput * maxSpeed;
         }
+    }
 
-        // === ACELERAÇÃO E DESACELERAÇÃO ===
+    /// <summary>
+    /// Applies gradual acceleration or deceleration based on current state
+    /// </summary>
+    private void ApplyAccelerationDeceleration(float maxSpeed)
+    {
+        bool notBlocked = !collisionSystem.IsFrontBlocked && !collisionSystem.IsBackBlocked;
+        bool accelerating = Mathf.Abs(targetSpeed) > Mathf.Abs(currentSpeed);
 
-        if (!sistemaColisao.EstaBloqueadoFrente && !sistemaColisao.EstaBloqueadoTras &&
-            Mathf.Abs(velocidadeDesejada) > Mathf.Abs(velocidadeAtual))
+        if (notBlocked && accelerating)
         {
-            float aceleracao = velocidadeMaxima / tempoAceleracao;
-            velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeDesejada, aceleracao * Time.deltaTime);
+            // Gradual acceleration
+            float acceleration = maxSpeed / accelerationTime;
+            currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, acceleration * Time.deltaTime);
         }
         else
         {
-            float desaceleracao = velocidadeMaxima / tempoTravagem;
+            // Gradual deceleration
+            float deceleration = maxSpeed / brakingTime;
 
-            if (sistemaColisao.EstaBloqueadoFrente || sistemaColisao.EstaBloqueadoTras)
+            if (collisionSystem.IsFrontBlocked || collisionSystem.IsBackBlocked)
             {
-                velocidadeAtual = 0;
+                // Stop immediately if blocked
+                currentSpeed = 0;
             }
-            else if (sistemaColisao.EstaEmColisao)
+            else if (collisionSystem.IsInCollision)
             {
-                desaceleracao *= 2f;
-                velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeDesejada, desaceleracao * Time.deltaTime);
+                // Faster deceleration in collision
+                deceleration *= 2f;
+                currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, deceleration * Time.deltaTime);
             }
             else
             {
-                velocidadeAtual = Mathf.MoveTowards(velocidadeAtual, velocidadeDesejada, desaceleracao * Time.deltaTime);
+                // Normal deceleration
+                currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, deceleration * Time.deltaTime);
             }
         }
-
-        // Rotação
-        ProcessarRotacao(inputHorizontalSuavizado);
     }
 
-    void ProcessarRotacao(float inputHorizontal)
+    /// <summary>
+    /// Processes wheelchair rotation based on steering type and speed
+    /// </summary>
+    void ProcessRotation(float horizontalInput)
     {
-        float multiplicadorRotacao = 1f;
-        bool isDirecaoTraseira = false;
-        eficienciaRotacao = 100f;
+        float rotationMultiplier = 1f;
+        bool isRearSteering = false;
+        rotationEfficiency = 100f;
 
+        // Check steering type
         if (wheelController != null)
         {
-            isDirecaoTraseira = wheelController.GetTipoDirecao() == WheelController.TipoDirecao.DirecaoTraseira;
+            isRearSteering = wheelController.GetSteeringType() == WheelController.SteeringType.RearSteering;
 
-            if (isDirecaoTraseira)
+            if (isRearSteering)
             {
-                multiplicadorRotacao = 1.3f;
+                rotationMultiplier = 1.3f; // Rear steering turns more easily
             }
         }
 
-        bool estaParado = Mathf.Abs(velocidadeAtual) < 0.1f;
+        bool isStationary = Mathf.Abs(currentSpeed) < 0.1f;
 
-        if (isDirecaoTraseira)
+        if (isRearSteering)
         {
-            if (estaParado)
-            {
-                eficienciaRotacao = 0f;
-
-                if (Mathf.Abs(inputHorizontal) > 0.1f)
-                {
-                    tentandoVirarParado = true;
-                    tempoTentandoVirar = 1f;
-
-                }
-
-                return;
-            }
-            else
-            {
-                tentandoVirarParado = false;
-                float velocidadeNormalizada = Mathf.Abs(velocidadeAtual) / velocidadeMaximaNormal;
-                float eficienciaBase = Mathf.Lerp(0.2f, 1f, velocidadeNormalizada);
-                multiplicadorRotacao *= eficienciaBase;
-
-                if (velocidadeAtual < 0)
-                {
-                    multiplicadorRotacao *= -0.8f;
-                    eficienciaRotacao = eficienciaBase * 80f;
-                }
-                else
-                {
-                    eficienciaRotacao = eficienciaBase * 100f;
-                }
-            }
+            ProcessRearRotation(isStationary, horizontalInput, ref rotationMultiplier);
         }
         else
         {
-            tentandoVirarParado = false;
-
-            if (estaParado && !rotacaoNoLugar)
-            {
-                eficienciaRotacao = 0f;
-                return;
-            }
-            else if (estaParado && rotacaoNoLugar)
-            {
-                multiplicadorRotacao *= 1.5f;
-                eficienciaRotacao = 100f;
-            }
-            else
-            {
-                float velocidadeNormalizada = Mathf.Abs(velocidadeAtual) / velocidadeMaximaNormal;
-                multiplicadorRotacao *= (1f + velocidadeNormalizada * 0.2f);
-                eficienciaRotacao = 100f;
-            }
+            ProcessFrontRotation(isStationary, ref rotationMultiplier);
         }
 
-        float rotacao = inputHorizontal * velocidadeRotacao * multiplicadorRotacao * Time.deltaTime;
-        transform.Rotate(0, rotacao, 0);
+        // Apply calculated rotation
+        float rotation = horizontalInput * rotationSpeed * rotationMultiplier * Time.deltaTime;
+        transform.Rotate(0, rotation, 0);
     }
 
-    void AplicarMovimentoRealista()
+    /// <summary>
+    /// Processes rotation logic specific to rear steering
+    /// </summary>
+    private void ProcessRearRotation(bool isStationary, float horizontalInput, ref float multiplier)
     {
-        Vector3 direcaoMovimento = Vector3.zero;
-
-        // === USAR SISTEMA DE COLISÃO PARA DESLIZAMENTO ===
-        if (sistemaColisao.EstaDeslizandoParede && sistemaColisao.DirecaoDeslize != Vector3.zero)
+        if (isStationary)
         {
-            direcaoMovimento = sistemaColisao.DirecaoDeslize * Mathf.Abs(velocidadeAtual) * 0.5f;
+            // Rear steering doesn't allow stationary rotation
+            rotationEfficiency = 0f;
+
+            if (Mathf.Abs(horizontalInput) > 0.1f)
+            {
+                tryingToTurnStationary = true;
+                tryingToTurnTime = 1f;
+            }
+
+            multiplier = 0f;
         }
         else
         {
-            direcaoMovimento = transform.forward * velocidadeAtual;
+            tryingToTurnStationary = false;
+            float normalizedSpeed = Mathf.Abs(currentSpeed) / maxSpeedNormal;
+            float baseEfficiency = Mathf.Lerp(0.2f, 1f, normalizedSpeed);
+            multiplier *= baseEfficiency;
+
+            if (currentSpeed < 0)
+            {
+                // In reverse rotation is inverted and less efficient
+                multiplier *= -0.8f;
+                rotationEfficiency = baseEfficiency * 80f;
+            }
+            else
+            {
+                rotationEfficiency = baseEfficiency * 100f;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Processes rotation logic specific to front steering
+    /// </summary>
+    private void ProcessFrontRotation(bool isStationary, ref float multiplier)
+    {
+        tryingToTurnStationary = false;
+
+        if (isStationary && !rotationInPlace)
+        {
+            // No rotation when stationary (unless rotationInPlace is active)
+            rotationEfficiency = 0f;
+            multiplier = 0f;
+        }
+        else if (isStationary && rotationInPlace)
+        {
+            // Facilitated rotation when stationary
+            multiplier *= 1.5f;
+            rotationEfficiency = 100f;
+        }
+        else
+        {
+            // Rotation slightly increases with speed
+            float normalizedSpeed = Mathf.Abs(currentSpeed) / maxSpeedNormal;
+            multiplier *= (1f + normalizedSpeed * 0.2f);
+            rotationEfficiency = 100f;
+        }
+    }
+
+    /// <summary>
+    /// Applies calculated movement to CharacterController including sliding
+    /// </summary>
+    void ApplyRealisticMovement()
+    {
+        Vector3 movementDirection = Vector3.zero;
+
+        // Use slide direction if sliding on wall
+        if (collisionSystem.IsWallSliding && collisionSystem.SlideDirection != Vector3.zero)
+        {
+            movementDirection = collisionSystem.SlideDirection * Mathf.Abs(currentSpeed) * 0.5f;
+        }
+        else
+        {
+            movementDirection = transform.forward * currentSpeed;
         }
 
-        direcaoMovimento.y = movimentoVelocidade.y;
+        // Preserve vertical movement (gravity)
+        movementDirection.y = movementVelocity.y;
 
-        controller.Move(direcaoMovimento * Time.deltaTime);
+        controller.Move(movementDirection * Time.deltaTime);
     }
 
-    void AplicarMovimentoVertical()
+    /// <summary>
+    /// Applies only vertical movement (used when in off mode)
+    /// </summary>
+    void ApplyVerticalMovement()
     {
-        Vector3 movimentoVertical = new Vector3(0, movimentoVelocidade.y, 0);
-        controller.Move(movimentoVertical * Time.deltaTime);
+        Vector3 verticalMovement = new Vector3(0, movementVelocity.y, 0);
+        controller.Move(verticalMovement * Time.deltaTime);
     }
 
-    void AplicarGravidade()
+    /// <summary>
+    /// Applies gravity to vertical movement
+    /// </summary>
+    void ApplyGravity()
     {
         if (controller.isGrounded)
         {
-            movimentoVelocidade.y = -0.5f;
+            // Small downward force to keep on ground
+            movementVelocity.y = -0.5f;
         }
         else
         {
-            // Gravidade normal quando no ar
-            movimentoVelocidade.y += gravidade * Time.deltaTime;
+            // Accumulate fall velocity
+            movementVelocity.y += gravity * Time.deltaTime;
 
-            //  Limitar velocidade máxima de queda (evita bugs)
-            movimentoVelocidade.y = Mathf.Max(movimentoVelocidade.y, -20f);
+            // Limit maximum fall speed
+            movementVelocity.y = Mathf.Max(movementVelocity.y, -20f);
         }
     }
 
-    void PararDeEmergencia()
+    /// <summary>
+    /// Completely stops the wheelchair (emergency brake)
+    /// </summary>
+    void EmergencyStop()
     {
-        velocidadeAtual = 0;
-        velocidadeDesejada = 0;
+        currentSpeed = 0;
+        targetSpeed = 0;
 
-        // Limpar deslizamento através do sistema de colisão
-        sistemaColisao.LimparDeslizamento();
+        collisionSystem.ClearSlide();
 
         if (wheelController != null)
         {
-            wheelController.PararRodas();
+            wheelController.StopWheels();
         }
     }
 
     /// <summary>
-    /// Callback do Unity quando o CharacterController colide
-    /// Delega a lógica ao sistema de colisão
+    /// Unity callback when CharacterController collides with objects
+    /// Delegates processing to collision system
     /// </summary>
     void OnControllerColliderHit(ControllerColliderHit hit)
     {
-        // A lógica de som foi movida para o Update() para
-        // detetar apenas a *mudança* de estado.
-        sistemaColisao.ProcessarColisao(hit, velocidadeAtual, ref velocidadeAtual);
+        collisionSystem.ProcessCollision(hit, currentSpeed, ref currentSpeed);
     }
 
-    // ===== MÉTODOS PÚBLICOS =====
+    // ===== PUBLIC METHODS =====
 
-    public float GetVelocidadeNormalizada()
-    {
-        return velocidadeAtual / velocidadeMaximaNormal;
-    }
-
-    public bool EstaEmMovimento()
-    {
-        return Mathf.Abs(velocidadeAtual) > 0.1f;
-    }
-
-    public void ReduzirVelocidade(float multiplicador)
-    {
-        velocidadeAtual *= multiplicador;
-    }
-
-    // --- NOVA FUNÇÃO PÚBLICA PARA TOCAR SONS ---
     /// <summary>
-    /// Toca um AudioClip uma vez no 'lançador' de efeitos
+    /// Returns normalized current speed (0-1) based on normal maximum speed
     /// </summary>
-    public void TocarSom(AudioClip clip)
+    public float GetNormalizedSpeed()
     {
-        // Verifica se o lançador e o clip existem antes de tocar
-        if (audioEfeitos != null && clip != null)
+        return currentSpeed / maxSpeedNormal;
+    }
+
+    /// <summary>
+    /// Checks if wheelchair is moving
+    /// </summary>
+    public bool IsMoving()
+    {
+        return Mathf.Abs(currentSpeed) > 0.1f;
+    }
+
+    /// <summary>
+    /// Reduces current speed by a multiplier
+    /// </summary>
+    public void ReduceSpeed(float multiplier)
+    {
+        currentSpeed *= multiplier;
+    }
+
+    /// <summary>
+    /// Plays an effect sound through the effects AudioSource
+    /// </summary>
+    public void PlaySound(AudioClip clip)
+    {
+        if (effectsAudio != null && clip != null)
         {
-            audioEfeitos.PlayOneShot(clip);
+            effectsAudio.PlayOneShot(clip);
         }
     }
-    // --- FIM DA NOVA FUNÇÃO ---
 
-
-    // ===== GUI DE DEBUG ORIGINAL =====
+    // ===== GRAPHICAL INTERFACE =====
 
     void OnGUI()
     {
         if (!Application.isEditor) return;
 
-        // Info de movimento
+        // Movement info
         GUI.color = new Color(0, 0, 0, 0.8f);
         GUI.Box(new Rect(10, 100, 250, 110), "");
 
         GUI.color = Color.white;
         GUI.Label(new Rect(15, 105, 240, 20), "=== CADEIRA DE RODAS ===");
-        GUI.Label(new Rect(15, 125, 240, 20), $"Modo: {modoAtual}");
-        GUI.Label(new Rect(15, 145, 240, 20), $"Velocidade: {(velocidadeAtual * 3.6f):F1} / {(modoAtual == ModosVelocidade.Lento ? 3 : 6)} km/h");
-        string direcaoSimples = tipoDirecaoAtual.Contains("Traseira") ? "Traseira" : "Frontal";
-        GUI.Label(new Rect(15, 165, 240, 20), $"Direção: {direcaoSimples}");
+        GUI.Label(new Rect(15, 125, 240, 20), $"Modo: {currentMode}");
+        GUI.Label(new Rect(15, 145, 240, 20), $"Velocidade: {(currentSpeed * 3.6f):F1} / {(currentMode == SpeedMode.Slow ? 3 : 6)} km/h");
+        string steeringSimple = currentSteeringType.Contains("Rear") ? "Traseira" : "Frontal";
+        GUI.Label(new Rect(15, 165, 240, 20), $"Direção: {steeringSimple}");
 
-        // Estado (usa sistema de colisão)
-        string estado = "Normal";
-        if (sistemaColisao.EstaDeslizandoParede) estado = "Deslizar";
-        else if (sistemaColisao.EstaEmColisao || sistemaColisao.EstaBloqueadoFrente || sistemaColisao.EstaBloqueadoTras)
-            estado = "Colisão";
+        // State (uses collision system)
+        string state = "Normal";
+        if (collisionSystem.IsWallSliding) state = "Deslizar";
+        else if (collisionSystem.IsInCollision || collisionSystem.IsFrontBlocked || collisionSystem.IsBackBlocked)
+            state = "Colisão";
 
-        // Amarelo para deslizar, vermelho para colisão, verde para normal
-        if (sistemaColisao.EstaDeslizandoParede) GUI.color = Color.yellow;
-        else if (sistemaColisao.EstaEmColisao || sistemaColisao.EstaBloqueadoFrente || sistemaColisao.EstaBloqueadoTras)
+        // Yellow for sliding, red for collision, green for normal
+        if (collisionSystem.IsWallSliding) GUI.color = Color.yellow;
+        else if (collisionSystem.IsInCollision || collisionSystem.IsFrontBlocked || collisionSystem.IsBackBlocked)
             GUI.color = Color.red;
         else GUI.color = Color.green;
 
-        GUI.Label(new Rect(15, 185, 240, 20), $"Estado: {estado}");
+        GUI.Label(new Rect(15, 185, 240, 20), $"Estado: {state}");
         GUI.color = Color.white;
 
-        // Travão de emergência 
-        if (travaoDeEmergencia)
+        // Emergency brake
+        if (emergencyBrake)
         {
             GUI.color = new Color(1, 0, 0, 0.9f);
             GUI.Box(new Rect(10, 220, 250, 35), "");
@@ -557,16 +643,16 @@ public class Movement : MonoBehaviour
             GUI.color = Color.white;
         }
 
-        // Controlos
-        int yPosControlos = travaoDeEmergencia ? 265 : 220;
+        // Controls
+        int controlsYPos = emergencyBrake ? 265 : 220;
 
         GUI.color = new Color(0, 0.5f, 0, 0.8f);
-        GUI.Box(new Rect(10, yPosControlos, 250, 95), "");
+        GUI.Box(new Rect(10, controlsYPos, 250, 95), "");
         GUI.color = Color.white;
-        GUI.Label(new Rect(15, yPosControlos + 5, 240, 20), "=== CONTROLOS ===");
-        GUI.Label(new Rect(15, yPosControlos + 25, 240, 20), "WASD/Setas - Mover");
-        GUI.Label(new Rect(15, yPosControlos + 42, 240, 20), "1/2 - Modo Lento/Normal");
-        GUI.Label(new Rect(15, yPosControlos + 59, 240, 20), "T - Alternar direção");
-        GUI.Label(new Rect(15, yPosControlos + 76, 240, 20), "ESPAÇO - Travão");
+        GUI.Label(new Rect(15, controlsYPos + 5, 240, 20), "=== CONTROLOS ===");
+        GUI.Label(new Rect(15, controlsYPos + 25, 240, 20), "WASD/Setas - Mover");
+        GUI.Label(new Rect(15, controlsYPos + 42, 240, 20), "1/2 - Modo Lento/Normal");
+        GUI.Label(new Rect(15, controlsYPos + 59, 240, 20), "T - Alternar direção");
+        GUI.Label(new Rect(15, controlsYPos + 76, 240, 20), "ESPAÇO - Travão");
     }
 }
