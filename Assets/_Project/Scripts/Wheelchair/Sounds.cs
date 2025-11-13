@@ -75,7 +75,6 @@ public class Sounds : MonoBehaviour
     /// </summary>
     private void SetupAudioSources()
     {
-        // Setup motor AudioSource
         if (motorAudioSource == null)
         {
             motorAudioSource = gameObject.AddComponent<AudioSource>();
@@ -84,7 +83,6 @@ public class Sounds : MonoBehaviour
         motorAudioSource.volume = 0f;
         motorAudioSource.playOnAwake = false;
         
-        // Setup effects AudioSource
         if (effectsAudioSource == null)
         {
             effectsAudioSource = gameObject.AddComponent<AudioSource>();
@@ -101,12 +99,10 @@ public class Sounds : MonoBehaviour
         float verticalInput = Input.GetAxis("Vertical");
         bool acceleratingNow = Mathf.Abs(verticalInput) > 0.1f;
         
-        // Started accelerating
         if (acceleratingNow && !isAccelerating)
         {
             StartAcceleration();
         }
-        // Stopped accelerating
         else if (!acceleratingNow && isAccelerating)
         {
             StopAcceleration();
@@ -122,7 +118,6 @@ public class Sounds : MonoBehaviour
         {
             acceleratingTime += Time.deltaTime;
             
-            // After 2 seconds, start loop if not started yet
             if (acceleratingTime >= 2f && !loopStarted)
             {
                 StartLoop();
@@ -197,18 +192,15 @@ public class Sounds : MonoBehaviour
 
         if (impactVelocity >= minCollisionVelocity && effectsAudioSource != null)
         {
-            // Determine collision type based on angle
             Vector3 contactNormal = collision.GetContact(0).normal;
             float angle = Vector3.Angle(transform.forward, -contactNormal);
             
             AudioClip collisionSound = null;
             
-            // Front or rear collision
             if (angle < 45f || angle > 135f)
             {
                 collisionSound = frontCollisionSound;
             }
-            // Side collision
             else
             {
                 collisionSound = sideCollisionSound;
@@ -221,29 +213,8 @@ public class Sounds : MonoBehaviour
         }
     }
 
-    // ===== PUBLIC METHODS =====
-
     /// <summary>
-    /// PUBLIC method - Called by Movement when starting/stopping movement
-    /// Kept for compatibility but does nothing (Update manages everything)
-    /// </summary>
-    public void StartMovement(bool interiorMode)
-    {
-        // Not needed - Update manages everything based on input
-    }
-
-    /// <summary>
-    /// PUBLIC method - Called by Movement when stopping
-    /// Kept for compatibility but does nothing (Update manages everything)
-    /// </summary>
-    public void StopMovement()
-    {
-        // Not needed - Update manages everything based on input
-    }
-
-    /// <summary>
-    /// PUBLIC method - Plays click sound
-    /// Called by WheelController when changing steering type
+    /// Plays click sound - called by WheelController when changing steering type
     /// </summary>
     public void PlayClick()
     {

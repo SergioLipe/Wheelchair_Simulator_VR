@@ -75,13 +75,7 @@ public class WheelController : MonoBehaviour
     [SerializeField] private float currentSteeringAngle = 0f;
     [SerializeField] private float currentSpeed = 0f;
     [SerializeField] private float steeringInput = 0f;
-    [SerializeField] private bool isMoving = false;
 
-    /// <summary>
-    /// Defines which set of wheels controls direction
-    /// FrontSteering: Like a normal car (front wheels steer)
-    /// RearSteering: More maneuverable, like forklift (rear wheels steer)
-    /// </summary>
     public enum SteeringType
     {
         FrontSteering,
@@ -138,7 +132,6 @@ public class WheelController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         previousPosition = transform.position;
 
-        // Find WheelchairSounds safely in multiple locations
         wheelchairSounds = GetComponentInChildren<Sounds>();
         
         if (wheelchairSounds == null && transform.parent != null)
@@ -191,7 +184,6 @@ public class WheelController : MonoBehaviour
             steeringType = SteeringType.FrontSteering;
         }
 
-        // Play click sound
         if (wheelchairSounds != null)
         {
             wheelchairSounds.PlayClick();
@@ -211,13 +203,11 @@ public class WheelController : MonoBehaviour
         if (movementScript != null)
         {
             currentSpeed = movementScript.GetNormalizedSpeed();
-            isMoving = movementScript.IsMoving();
         }
         else if (rb != null)
         {
             currentSpeed = rb.linearVelocity.magnitude / (maxSpeedKmH / 3.6f);
             currentSpeed = Mathf.Clamp(currentSpeed, -1f, 1f);
-            isMoving = rb.linearVelocity.magnitude > 0.1f;
         }
         else
         {
@@ -225,7 +215,6 @@ public class WheelController : MonoBehaviour
             float calculatedSpeed = distance / Time.deltaTime;
             currentSpeed = calculatedSpeed / (maxSpeedKmH / 3.6f);
             currentSpeed = Mathf.Clamp(currentSpeed, -1f, 1f);
-            isMoving = distance > 0.01f;
             previousPosition = transform.position;
         }
     }
@@ -235,7 +224,6 @@ public class WheelController : MonoBehaviour
     /// </summary>
     void ApplySteering()
     {
-        // Calculate target angle
         if (Mathf.Abs(steeringInput) > 0.01f)
         {
             float targetAngle = steeringInput * maxSteeringAngle;
@@ -248,7 +236,6 @@ public class WheelController : MonoBehaviour
 
         Quaternion steeringRotation = Quaternion.AngleAxis(currentSteeringAngle, STEERING_AXIS);
 
-        // Apply to correct joints based on steering type
         if (steeringType == SteeringType.FrontSteering)
         {
             if (joint4_FrontSteering != null)
@@ -272,27 +259,23 @@ public class WheelController : MonoBehaviour
     /// </summary>
     void ApplyWheelRotation()
     {
-        // Calculate rear wheel rotation
         float rearCircumference = Mathf.PI * rearWheelDiameter;
         float rotationsPerMeterRear = 1f / rearCircumference;
         float speedMetersPerSecond = currentSpeed * (maxSpeedKmH / 3.6f);
         float rotationsPerSecondRear = speedMetersPerSecond * rotationsPerMeterRear;
         float degreesPerSecondRear = rotationsPerSecondRear * 360f * speedMultiplier;
 
-        // Calculate front wheel rotation
         float frontCircumference = Mathf.PI * frontWheelDiameter;
         float rotationsPerMeterFront = 1f / frontCircumference;
         float rotationsPerSecondFront = speedMetersPerSecond * rotationsPerMeterFront;
         float degreesPerSecondFront = rotationsPerSecondFront * 360f * speedMultiplier;
 
-        // Invert if needed
         if (invertRotation)
         {
             degreesPerSecondRear = -degreesPerSecondRear;
             degreesPerSecondFront = -degreesPerSecondFront;
         }
 
-        // Calculate differential rotation
         float deltaRotationLeft = 1f;
         float deltaRotationRight = 1f;
 
@@ -317,13 +300,11 @@ public class WheelController : MonoBehaviour
             }
         }
 
-        // Update accumulated rotations
         rotationRearLeft += degreesPerSecondRear * deltaRotationLeft * Time.deltaTime;
         rotationRearRight += degreesPerSecondRear * deltaRotationRight * Time.deltaTime;
         rotationFrontLeft += degreesPerSecondFront * deltaRotationLeft * Time.deltaTime;
         rotationFrontRight += degreesPerSecondFront * deltaRotationRight * Time.deltaTime;
 
-        // Apply rotations to joints
         if (joint8_RearLeftWheel != null)
         {
             Quaternion rotation = Quaternion.AngleAxis(rotationRearLeft, ROTATION_AXIS);
@@ -406,7 +387,6 @@ public class WheelController : MonoBehaviour
     /// </summary>
     void VerifyConfiguration()
     {
-        // Silent verification - only logs warnings for missing joints
         if (joint4_FrontSteering == null) return;
         if (joint5_RearSteering == null) return;
         if (joint6_FrontLeftWheel == null) return;

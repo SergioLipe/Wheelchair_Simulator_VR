@@ -38,9 +38,6 @@ public class CollisionFlashEffect : MonoBehaviour
     [Tooltip("Effect animation curve")]
     public AnimationCurve animationCurve = AnimationCurve.EaseInOut(0, 1, 1, 0);
 
-    [Tooltip("Use pulse effect")]
-    public bool pulseEffect = true;
-
     [Tooltip("Number of pulses")]
     [Range(1, 3)]
     public int pulseCount = 1;
