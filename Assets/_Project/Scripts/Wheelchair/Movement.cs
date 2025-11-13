@@ -27,7 +27,7 @@ public class Movement : MonoBehaviour
 
     [Header("=== Rotation Settings ===")]
     [Tooltip("Rotation speed (degrees per second)")]
-    public float rotationSpeed = 45f;
+    public float rotationSpeed = 90f;
 
     [Tooltip("Can rotate without moving forward/backward? (Only works with front steering)")]
     public bool rotationInPlace = false;
@@ -400,7 +400,7 @@ public class Movement : MonoBehaviour
 
             if (isRearSteering)
             {
-                rotationMultiplier = 1.3f; // Rear steering turns more easily
+                rotationMultiplier = 2.5f; // Rear steering turns more easily
             }
         }
 
@@ -477,7 +477,7 @@ public class Movement : MonoBehaviour
         {
             // Rotation slightly increases with speed
             float normalizedSpeed = Mathf.Abs(currentSpeed) / maxSpeedNormal;
-            multiplier *= (1f + normalizedSpeed * 0.2f);
+            multiplier *= (1f + normalizedSpeed * 0.8f);
             rotationEfficiency = 100f;
         }
     }
