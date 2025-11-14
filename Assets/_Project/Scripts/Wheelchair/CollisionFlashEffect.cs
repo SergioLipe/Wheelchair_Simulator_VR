@@ -77,8 +77,9 @@ public class CollisionFlashEffect : MonoBehaviour
     private GameObject[] arrows = new GameObject[4];
     private Image[] arrowImages = new Image[4];
 
-    // Animation state
-    private Coroutine currentCoroutine;
+    // Animation state - one coroutine per arrow for independent control
+    private Coroutine[] arrowCoroutines = new Coroutine[4];
+    private Coroutine mainEffectCoroutine;
     private Transform cameraTransform;
     private Vector3 originalCameraPosition;
 
@@ -237,11 +238,33 @@ public class CollisionFlashEffect : MonoBehaviour
     {
         if (!feedbackActive || type == CollisionType.None) return;
 
-        if (currentCoroutine != null)
-            StopCoroutine(currentCoroutine);
+        // Stop and clean previous main effect
+        if (mainEffectCoroutine != null)
+        {
+            StopCoroutine(mainEffectCoroutine);
+            mainEffectCoroutine = null;
+        }
 
-        currentCoroutine = StartCoroutine(AnimateFeedback(type));
+        // Start main effect
+        mainEffectCoroutine = StartCoroutine(AnimateMainEffect(type));
 
+        // Handle arrow animation independently
+        int arrowIndex = GetArrowIndex(type);
+        if (arrowIndex >= 0 && showArrows)
+        {
+            // Stop previous arrow animation for this specific arrow
+            if (arrowCoroutines[arrowIndex] != null)
+            {
+                StopCoroutine(arrowCoroutines[arrowIndex]);
+                arrowCoroutines[arrowIndex] = null;
+            }
+
+            // Start new arrow animation
+            Color color = GetColorForType(type);
+            arrowCoroutines[arrowIndex] = StartCoroutine(AnimateArrow(arrowIndex, color));
+        }
+
+        // Camera shake
         if (cameraShakeActive && cameraTransform != null)
         {
             StartCoroutine(CameraShake());
@@ -249,9 +272,9 @@ public class CollisionFlashEffect : MonoBehaviour
     }
 
     /// <summary>
-    /// Main animation coroutine
+    /// Animates the main screen effect
     /// </summary>
-    IEnumerator AnimateFeedback(CollisionType type)
+    IEnumerator AnimateMainEffect(CollisionType type)
     {
         Color color = GetColorForType(type);
         Texture2D texture = CreateGradientTexture(type);
@@ -259,12 +282,71 @@ public class CollisionFlashEffect : MonoBehaviour
             new Vector2(0.5f, 0.5f));
         effectImage.sprite = sprite;
 
-        int arrowIndex = GetArrowIndex(type);
         float durationPerPulse = effectDuration / pulseCount;
+        float elapsedTime = 0f;
 
-        yield return AnimatePulses(color, arrowIndex, durationPerPulse);
+        for (int pulse = 0; pulse < pulseCount; pulse++)
+        {
+            float pulseStartTime = elapsedTime;
 
-        CleanupAnimation(color, arrowIndex, texture, sprite);
+            while (elapsedTime - pulseStartTime < durationPerPulse)
+            {
+                elapsedTime += Time.deltaTime;
+                float progress = (elapsedTime - pulseStartTime) / durationPerPulse;
+                float intensity = animationCurve.Evaluate(progress) * maxIntensity;
+
+                Color currentColor = color;
+                currentColor.a = intensity;
+                effectImage.color = currentColor;
+
+                yield return null;
+            }
+        }
+
+        // Clean up main effect
+        effectImage.color = new Color(color.r, color.g, color.b, 0);
+        Destroy(texture);
+        Destroy(sprite);
+        mainEffectCoroutine = null;
+    }
+
+    /// <summary>
+    /// Animates a specific arrow independently
+    /// </summary>
+    IEnumerator AnimateArrow(int arrowIndex, Color color)
+    {
+        if (arrowIndex < 0 || arrowIndex >= 4 || arrowImages[arrowIndex] == null)
+            yield break;
+
+        float durationPerPulse = effectDuration / pulseCount;
+        float elapsedTime = 0f;
+
+        for (int pulse = 0; pulse < pulseCount; pulse++)
+        {
+            float pulseStartTime = elapsedTime;
+
+            while (elapsedTime - pulseStartTime < durationPerPulse)
+            {
+                elapsedTime += Time.deltaTime;
+                float progress = (elapsedTime - pulseStartTime) / durationPerPulse;
+                float intensity = animationCurve.Evaluate(progress) * maxIntensity;
+
+                // Update arrow visual
+                Color arrowColor = color;
+                arrowColor.a = intensity * 1.5f;
+                arrowImages[arrowIndex].color = arrowColor;
+
+                float scale = 1f + Mathf.Sin(progress * Mathf.PI) * 0.3f;
+                arrows[arrowIndex].transform.localScale = Vector3.one * scale;
+
+                yield return null;
+            }
+        }
+
+        // Clean up this specific arrow
+        arrowImages[arrowIndex].color = new Color(color.r, color.g, color.b, 0);
+        arrows[arrowIndex].transform.localScale = Vector3.one;
+        arrowCoroutines[arrowIndex] = null;
     }
 
     /// <summary>
@@ -290,68 +372,6 @@ public class CollisionFlashEffect : MonoBehaviour
             case CollisionType.RightSide: return 3;
             default: return -1;
         }
-    }
-
-    /// <summary>
-    /// Animates pulses
-    /// </summary>
-    private IEnumerator AnimatePulses(Color color, int arrowIndex, float durationPerPulse)
-    {
-        float elapsedTime = 0f;
-
-        for (int pulse = 0; pulse < pulseCount; pulse++)
-        {
-            float pulseStartTime = elapsedTime;
-
-            while (elapsedTime - pulseStartTime < durationPerPulse)
-            {
-                elapsedTime += Time.deltaTime;
-                float progress = (elapsedTime - pulseStartTime) / durationPerPulse;
-                float intensity = animationCurve.Evaluate(progress) * maxIntensity;
-
-                UpdateEffectVisuals(color, intensity, arrowIndex, progress);
-
-                yield return null;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Updates effect visuals each frame
-    /// </summary>
-    private void UpdateEffectVisuals(Color color, float intensity, int arrowIndex, float progress)
-    {
-        Color currentColor = color;
-        currentColor.a = intensity;
-        effectImage.color = currentColor;
-
-        if (arrowIndex >= 0)
-        {
-            Color arrowColor = color;
-            arrowColor.a = intensity * 1.5f;
-            arrowImages[arrowIndex].color = arrowColor;
-
-            float scale = 1f + Mathf.Sin(progress * Mathf.PI) * 0.3f;
-            arrows[arrowIndex].transform.localScale = Vector3.one * scale;
-        }
-    }
-
-    /// <summary>
-    /// Cleans up animation resources
-    /// </summary>
-    private void CleanupAnimation(Color color, int arrowIndex, Texture2D texture, Sprite sprite)
-    {
-        effectImage.color = new Color(color.r, color.g, color.b, 0);
-        
-        if (arrowIndex >= 0)
-        {
-            arrowImages[arrowIndex].color = new Color(color.r, color.g, color.b, 0);
-            arrows[arrowIndex].transform.localScale = Vector3.one;
-        }
-
-        Destroy(texture);
-        Destroy(sprite);
-        currentCoroutine = null;
     }
 
     /// <summary>
@@ -464,15 +484,28 @@ public class CollisionFlashEffect : MonoBehaviour
     /// </summary>
     public void StopAllEffects()
     {
-        if (currentCoroutine != null)
+        // Stop main effect
+        if (mainEffectCoroutine != null)
         {
-            StopCoroutine(currentCoroutine);
-            currentCoroutine = null;
+            StopCoroutine(mainEffectCoroutine);
+            mainEffectCoroutine = null;
         }
 
+        // Stop all arrow coroutines
+        for (int i = 0; i < arrowCoroutines.Length; i++)
+        {
+            if (arrowCoroutines[i] != null)
+            {
+                StopCoroutine(arrowCoroutines[i]);
+                arrowCoroutines[i] = null;
+            }
+        }
+
+        // Reset main effect visual
         if (effectImage != null)
             effectImage.color = new Color(1, 1, 1, 0);
 
+        // Reset all arrow visuals
         for (int i = 0; i < arrowImages.Length; i++)
         {
             if (arrowImages[i] != null)
@@ -483,6 +516,7 @@ public class CollisionFlashEffect : MonoBehaviour
             }
         }
 
+        // Reset camera
         if (cameraTransform != null)
             cameraTransform.localPosition = originalCameraPosition;
     }
