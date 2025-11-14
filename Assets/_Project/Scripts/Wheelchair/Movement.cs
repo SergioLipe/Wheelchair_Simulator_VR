@@ -118,12 +118,12 @@ public class Movement : MonoBehaviour
         }
 
         // Optimized values for realistic obstacle contact
-        controller.height = 0.8f;     
-        controller.radius = 0.17f;    
-        controller.center = new Vector3(0, 0.4f, 0);  
+        controller.height = 0.8f;
+        controller.radius = 0.17f;
+        controller.center = new Vector3(0, 0.4f, 0);
         controller.skinWidth = 0.0001f;
         controller.minMoveDistance = 0.0f;
-        controller.stepOffset = 0.08f; 
+        controller.stepOffset = 0.08f;
 
         // Slightly elevate at start to avoid floor collision
         transform.position += Vector3.up * 0.1f;
@@ -600,54 +600,136 @@ public class Movement : MonoBehaviour
 
     void OnGUI()
     {
-        if (!Application.isEditor) return;
+        // Modern styling with gradient-like semi-transparent background
+        GUIStyle boxStyle = new GUIStyle(GUI.skin.box);
+        boxStyle.normal.background = MakeTex(2, 2, new Color(0.15f, 0.18f, 0.22f, 0.75f));
+        boxStyle.border = new RectOffset(8, 8, 8, 8);
 
-        // Movement info
-        GUI.color = new Color(0, 0, 0, 0.8f);
-        GUI.Box(new Rect(10, 100, 250, 110), "");
+        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
+        labelStyle.fontSize = 14;
+        labelStyle.normal.textColor = Color.white;
 
+        GUIStyle headerStyle = new GUIStyle(GUI.skin.label);
+        headerStyle.fontSize = 16;
+        headerStyle.fontStyle = FontStyle.Bold;
+        headerStyle.normal.textColor = new Color(0.5f, 0.95f, 1f, 1f);
+
+        GUIStyle valueStyle = new GUIStyle(GUI.skin.label);
+        valueStyle.fontSize = 14;
+        valueStyle.fontStyle = FontStyle.Bold;
+
+        // ===== LEFT - INFO =====
+        GUI.Box(new Rect(15, 15, 240, 110), "", boxStyle);
+
+        // Header
+        GUI.Label(new Rect(30, 22, 200, 25), "CADEIRA DE RODAS", headerStyle);
+
+        // Elegant separator line with glow effect
+        GUI.color = new Color(0.5f, 0.95f, 1f, 0.6f);
+        GUI.DrawTexture(new Rect(30, 48, 195, 2), Texture2D.whiteTexture);
         GUI.color = Color.white;
-        GUI.Label(new Rect(15, 105, 240, 20), "=== CADEIRA DE RODAS ===");
-        GUI.Label(new Rect(15, 125, 240, 20), $"Modo: {currentMode}");
-        GUI.Label(new Rect(15, 145, 240, 20), $"Velocidade: {(currentSpeed * 3.6f):F1} / {(currentMode == SpeedMode.Slow ? 3 : 6)} km/h");
-        string steeringSimple = currentSteeringType.Contains("Rear") ? "Traseira" : "Frontal";
-        GUI.Label(new Rect(15, 165, 240, 20), $"Direção: {steeringSimple}");
 
-        // State (uses collision system)
-        string state = "Normal";
-        if (collisionSystem.IsWallSliding) state = "Deslizar";
-        else if (collisionSystem.IsInCollision || collisionSystem.IsFrontBlocked || collisionSystem.IsBackBlocked)
-            state = "Colisão";
+        // Mode
+        string modeText = currentMode == SpeedMode.Slow ? "Interior" :
+                         (currentMode == SpeedMode.Off ? "Desligado" : "Exterior");
+        Color modeColor = currentMode == SpeedMode.Slow ? new Color(1f, 0.9f, 0.5f, 1f) :
+                         (currentMode == SpeedMode.Off ? new Color(1f, 0.6f, 0.6f, 1f) : new Color(0.6f, 1f, 0.7f, 1f));
 
-        // Yellow for sliding, red for collision, green for normal
-        if (collisionSystem.IsWallSliding) GUI.color = Color.yellow;
-        else if (collisionSystem.IsInCollision || collisionSystem.IsFrontBlocked || collisionSystem.IsBackBlocked)
-            GUI.color = Color.red;
-        else GUI.color = Color.green;
+        labelStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f, 1f);
+        GUI.Label(new Rect(30, 58, 90, 22), "Modo:", labelStyle);
+        valueStyle.normal.textColor = modeColor;
+        GUI.Label(new Rect(120, 58, 120, 22), modeText, valueStyle);
 
-        GUI.Label(new Rect(15, 185, 240, 20), $"Estado: {state}");
-        GUI.color = Color.white;
+        // Speed
+        float maxDisplaySpeed = currentMode == SpeedMode.Slow ? 3f : 6f;
+        string speedText = $"{(currentSpeed * 3.6f):F1}/{maxDisplaySpeed:F0} km/h";
+        labelStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f, 1f);
+        GUI.Label(new Rect(30, 78, 90, 22), "Veloc:", labelStyle);
+        valueStyle.normal.textColor = Color.white;
+        GUI.Label(new Rect(120, 78, 120, 22), speedText, valueStyle);
 
-        // Emergency brake
+        // Steering (with more bottom padding)
+        string steeringText = currentSteeringType.Contains("Rear") ? "Traseira" : "Frontal";
+        Color steeringColor = currentSteeringType.Contains("Rear") ? new Color(1f, 0.75f, 1f, 1f) : new Color(0.65f, 0.95f, 1f, 1f);
+        labelStyle.normal.textColor = new Color(0.9f, 0.9f, 0.9f, 1f);
+        GUI.Label(new Rect(30, 96, 90, 22), "Direção:", labelStyle);
+        valueStyle.normal.textColor = steeringColor;
+        GUI.Label(new Rect(120, 96, 120, 22), steeringText, valueStyle);
+
+        // ===== EMERGENCY BRAKE (CENTER TOP) =====
         if (emergencyBrake)
         {
-            GUI.color = new Color(1, 0, 0, 0.9f);
-            GUI.Box(new Rect(10, 220, 250, 35), "");
-            GUI.color = Color.red;
-            GUI.Label(new Rect(15, 228, 240, 20), "TRAVÃO DE EMERGÊNCIA ATIVO!");
-            GUI.color = Color.white;
+            GUIStyle emergencyBoxStyle = new GUIStyle(GUI.skin.box);
+            emergencyBoxStyle.normal.background = MakeTex(2, 2, new Color(0.9f, 0.2f, 0.2f, 0.85f));
+
+            GUI.Box(new Rect(Screen.width / 2 - 150, 15, 300, 40), "", emergencyBoxStyle);
+
+            GUIStyle warningStyle = new GUIStyle(GUI.skin.label);
+            warningStyle.fontSize = 16;
+            warningStyle.fontStyle = FontStyle.Bold;
+            warningStyle.alignment = TextAnchor.MiddleCenter;
+            warningStyle.normal.textColor = Color.white;
+
+            GUI.Label(new Rect(Screen.width / 2 - 150, 22, 300, 26), "⚠ TRAVÃO DE EMERGÊNCIA ⚠", warningStyle);
         }
 
-        // Controls
-        int controlsYPos = emergencyBrake ? 265 : 220;
+        // ===== RIGHT - CONTROLS =====
+        float rightX = Screen.width - 240 - 15;
 
-        GUI.color = new Color(0, 0.5f, 0, 0.8f);
-        GUI.Box(new Rect(10, controlsYPos, 250, 95), "");
+        GUI.Box(new Rect(rightX, 15, 240, 138), "", boxStyle);
+
+        headerStyle.normal.textColor = new Color(0.6f, 1f, 0.7f, 1f);
+        GUI.Label(new Rect(rightX + 15, 22, 200, 25), "CONTROLOS", headerStyle);
+
+        // Elegant separator line
+        GUI.color = new Color(0.6f, 1f, 0.7f, 0.6f);
+        GUI.DrawTexture(new Rect(rightX + 15, 48, 210, 2), Texture2D.whiteTexture);
         GUI.color = Color.white;
-        GUI.Label(new Rect(15, controlsYPos + 5, 240, 20), "=== CONTROLOS ===");
-        GUI.Label(new Rect(15, controlsYPos + 25, 240, 20), "WASD/Setas - Mover");
-        GUI.Label(new Rect(15, controlsYPos + 42, 240, 20), "1/2 - Modo Lento/Normal");
-        GUI.Label(new Rect(15, controlsYPos + 59, 240, 20), "T - Alternar direção");
-        GUI.Label(new Rect(15, controlsYPos + 76, 240, 20), "ESPAÇO - Travão");
+
+        GUIStyle keyStyle = new GUIStyle(GUI.skin.label);
+        keyStyle.fontSize = 13;
+        keyStyle.fontStyle = FontStyle.Bold;
+        keyStyle.normal.textColor = new Color(1f, 0.95f, 0.7f, 1f);
+
+        GUIStyle descStyle = new GUIStyle(GUI.skin.label);
+        descStyle.fontSize = 13;
+        descStyle.normal.textColor = new Color(0.95f, 0.95f, 0.95f, 1f);
+
+        int y = 58;
+        int lineH = 18;
+
+        GUI.Label(new Rect(rightX + 20, y, 100, 18), "WASD/Setas", keyStyle);
+        GUI.Label(new Rect(rightX + 125, y, 110, 18), "Mover", descStyle);
+        y += lineH;
+
+        GUI.Label(new Rect(rightX + 20, y, 100, 18), "1", keyStyle);
+        GUI.Label(new Rect(rightX + 125, y, 110, 18), "Modo Interior", descStyle);
+        y += lineH;
+
+        GUI.Label(new Rect(rightX + 20, y, 100, 18), "2", keyStyle);
+        GUI.Label(new Rect(rightX + 125, y, 110, 18), "Modo Exterior", descStyle);
+        y += lineH;
+
+        GUI.Label(new Rect(rightX + 20, y, 100, 18), "T", keyStyle);
+        GUI.Label(new Rect(rightX + 125, y, 110, 18), "Mudar Direção", descStyle);
+        y += lineH;
+
+        keyStyle.normal.textColor = new Color(1f, 0.7f, 0.7f, 1f);
+        GUI.Label(new Rect(rightX + 20, y, 100, 18), "ESPAÇO", keyStyle);
+        GUI.Label(new Rect(rightX + 125, y, 110, 18), "Travão", descStyle);
     }
+
+    // Helper to create colored textures for GUI backgrounds
+    private Texture2D MakeTex(int width, int height, Color col)
+    {
+        Color[] pix = new Color[width * height];
+        for (int i = 0; i < pix.Length; i++)
+            pix[i] = col;
+
+        Texture2D result = new Texture2D(width, height);
+        result.SetPixels(pix);
+        result.Apply();
+        return result;
+    }
+
 }
