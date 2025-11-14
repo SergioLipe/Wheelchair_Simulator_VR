@@ -1,9 +1,10 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 
 /// <summary>
-/// Modern visual collision feedback system
+/// Modern visual collision feedback system with spam prevention
 /// Uses UI Canvas with gradients, smooth animations and directional effects
 /// </summary>
 public class CollisionFlashEffect : MonoBehaviour
@@ -14,6 +15,15 @@ public class CollisionFlashEffect : MonoBehaviour
 
     [Tooltip("Canvas reference (will be created automatically if null)")]
     public Canvas canvas;
+
+    [Header("=== Spam Prevention ===")]
+    [Tooltip("Minimum time between effects for same direction (seconds)")]
+    [Range(0.1f, 2f)]
+    public float effectCooldown = 1f;
+    
+    [Tooltip("Global cooldown between any effects (seconds)")]
+    [Range(0f, 1f)]
+    public float globalCooldown = 1f;
 
     [Header("=== Visual Configuration ===")]
     [Tooltip("Effect duration (seconds)")]
@@ -62,6 +72,9 @@ public class CollisionFlashEffect : MonoBehaviour
     [Range(50f, 200f)]
     public float arrowSize = 100f;
 
+    [Header("=== Debug Info ===")]
+    [SerializeField] private bool showDebugInfo = false;
+
     public enum CollisionType
     {
         None,
@@ -83,15 +96,37 @@ public class CollisionFlashEffect : MonoBehaviour
     private Transform cameraTransform;
     private Vector3 originalCameraPosition;
 
+    // Cooldown management
+    private Dictionary<CollisionType, float> lastEffectTime = new Dictionary<CollisionType, float>();
+    private float lastGlobalEffectTime = 0f;
+    private Dictionary<CollisionType, int> effectCounter = new Dictionary<CollisionType, int>();
+
     void Start()
     {
         SetupUI();
         InitializeCamera();
+        InitializeCooldowns();
     }
 
     void OnDestroy()
     {
         StopAllEffects();
+    }
+
+    /// <summary>
+    /// Initialize cooldown tracking
+    /// </summary>
+    private void InitializeCooldowns()
+    {
+        lastEffectTime[CollisionType.Front] = 0f;
+        lastEffectTime[CollisionType.Back] = 0f;
+        lastEffectTime[CollisionType.LeftSide] = 0f;
+        lastEffectTime[CollisionType.RightSide] = 0f;
+        
+        effectCounter[CollisionType.Front] = 0;
+        effectCounter[CollisionType.Back] = 0;
+        effectCounter[CollisionType.LeftSide] = 0;
+        effectCounter[CollisionType.RightSide] = 0;
     }
 
     /// <summary>
@@ -232,11 +267,61 @@ public class CollisionFlashEffect : MonoBehaviour
     public void RightSideFlash() => ActivateFeedback(CollisionType.RightSide);
 
     /// <summary>
-    /// Activates visual feedback
+    /// Check if effect is allowed based on cooldowns
+    /// </summary>
+    private bool IsEffectAllowed(CollisionType type)
+    {
+        float currentTime = Time.time;
+        
+        // Check global cooldown
+        if (currentTime - lastGlobalEffectTime < globalCooldown)
+        {
+            if (showDebugInfo) Debug.Log($"Global cooldown active. Wait {globalCooldown - (currentTime - lastGlobalEffectTime):F2}s");
+            return false;
+        }
+
+        // Check specific direction cooldown
+        if (lastEffectTime.ContainsKey(type))
+        {
+            float timeSinceLastEffect = currentTime - lastEffectTime[type];
+            if (timeSinceLastEffect < effectCooldown)
+            {
+                if (showDebugInfo) Debug.Log($"{type} cooldown active. Wait {effectCooldown - timeSinceLastEffect:F2}s");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Activates visual feedback with spam prevention
     /// </summary>
     void ActivateFeedback(CollisionType type)
     {
         if (!feedbackActive || type == CollisionType.None) return;
+
+        // Check cooldowns
+        if (!IsEffectAllowed(type))
+        {
+            // Increment spam counter
+            effectCounter[type]++;
+            
+            // Optional: You can add a warning system here
+            if (effectCounter[type] > 5)
+            {
+                if (showDebugInfo) Debug.LogWarning($"Excessive collision spam detected for {type}");
+                effectCounter[type] = 0; // Reset counter
+            }
+            
+            return; // Block the effect
+        }
+
+        // Update cooldown timers
+        float currentTime = Time.time;
+        lastEffectTime[type] = currentTime;
+        lastGlobalEffectTime = currentTime;
+        effectCounter[type] = 0; // Reset spam counter
 
         // Stop and clean previous main effect
         if (mainEffectCoroutine != null)
@@ -264,10 +349,14 @@ public class CollisionFlashEffect : MonoBehaviour
             arrowCoroutines[arrowIndex] = StartCoroutine(AnimateArrow(arrowIndex, color));
         }
 
-        // Camera shake
+        // Camera shake with cooldown check
         if (cameraShakeActive && cameraTransform != null)
         {
-            StartCoroutine(CameraShake());
+            // Only shake if not recently shaken
+            if (currentTime - lastGlobalEffectTime > shakeDuration)
+            {
+                StartCoroutine(CameraShake());
+            }
         }
     }
 
@@ -519,5 +608,22 @@ public class CollisionFlashEffect : MonoBehaviour
         // Reset camera
         if (cameraTransform != null)
             cameraTransform.localPosition = originalCameraPosition;
+    }
+
+    /// <summary>
+    /// Get cooldown status for UI/debug
+    /// </summary>
+    public bool IsOnCooldown(CollisionType type)
+    {
+        return !IsEffectAllowed(type);
+    }
+
+    /// <summary>
+    /// Reset all cooldowns
+    /// </summary>
+    public void ResetCooldowns()
+    {
+        InitializeCooldowns();
+        lastGlobalEffectTime = 0f;
     }
 }

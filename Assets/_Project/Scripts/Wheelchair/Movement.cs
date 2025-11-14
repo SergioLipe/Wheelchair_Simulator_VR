@@ -91,6 +91,12 @@ public class Movement : MonoBehaviour
     private string steeringTypeCache = "Frontal";
     private bool inCollisionCache = false;
 
+    // Sound cooldown system
+    private float lastCollisionSoundTime = 0f;
+    private float lastSlideSoundTime = 0f;
+    private float soundCooldown = 1.0f; // 1 second cooldown
+
+
     public enum SpeedMode
     {
         Slow,
@@ -200,42 +206,52 @@ public class Movement : MonoBehaviour
     }
 
     /// <summary>
-    /// Processes and plays sound effects based on state changes
-    /// </summary>
-    private void ProcessSoundEffects()
+/// Processes and plays sound effects based on state changes
+/// </summary>
+private void ProcessSoundEffects()
+{
+    float currentTime = Time.time;
+    
+    // Steering change sound
+    if (currentSteeringType != steeringTypeCache)
     {
-        // Steering change sound
-        if (currentSteeringType != steeringTypeCache)
-        {
-            PlaySound(steeringChangeSound);
-            steeringTypeCache = currentSteeringType;
-        }
+        PlaySound(steeringChangeSound);
+        steeringTypeCache = currentSteeringType;
+    }
 
-        // Slide start sound
-        bool slidingNow = collisionSystem.IsWallSliding;
-        if (slidingNow && !slidingCache)
+    // Slide start sound with cooldown
+    bool slidingNow = collisionSystem.IsWallSliding;
+    if (slidingNow && !slidingCache)
+    {
+        if (currentTime - lastSlideSoundTime > soundCooldown)
         {
             PlaySound(slideStartSound);
+            lastSlideSoundTime = currentTime;
         }
-        slidingCache = slidingNow;
+    }
+    slidingCache = slidingNow;
 
-        // Collision sound (sliding has priority)
-        bool inCollisionNow = (collisionSystem.IsInCollision ||
-                               collisionSystem.IsFrontBlocked ||
-                               collisionSystem.IsBackBlocked);
+    // Collision sound with cooldown (sliding has priority)
+    bool inCollisionNow = (collisionSystem.IsInCollision ||
+                           collisionSystem.IsFrontBlocked ||
+                           collisionSystem.IsBackBlocked);
 
-        if (slidingNow)
-        {
-            inCollisionNow = false;
-        }
+    if (slidingNow)
+    {
+        inCollisionNow = false;
+    }
 
-        if (inCollisionNow && !inCollisionCache)
+    if (inCollisionNow && !inCollisionCache)
+    {
+        if (currentTime - lastCollisionSoundTime > soundCooldown)
         {
             PlaySound(hardCollisionSound);
+            lastCollisionSoundTime = currentTime;
         }
-
-        inCollisionCache = inCollisionNow;
     }
+
+    inCollisionCache = inCollisionNow;
+}
 
     /// <summary>
     /// Updates warning and feedback timers

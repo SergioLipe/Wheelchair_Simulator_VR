@@ -10294,6 +10294,15 @@ MonoBehaviour:
   frontBlocked: 0
   backBlocked: 0
   wallSliding: 0
+  minCollisionHeight: 0.2
+  maxGroundAngle: 45
+  ignoreTags:
+  - Ground
+  - Floor
+  - Terrain
+  ignoreLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!114 &7484341647399616546
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10308,6 +10317,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CollisionFlashEffect
   feedbackActive: 1
   canvas: {fileID: 0}
+  effectCooldown: 1
+  globalCooldown: 1
   effectDuration: 0.5
   maxIntensity: 0.7
   useRadialGradient: 1
@@ -10343,6 +10354,7 @@ MonoBehaviour:
   shakeDuration: 0.2
   showArrows: 1
   arrowSize: 100
+  showDebugInfo: 0
 --- !u!82 &2460939904801887666
 AudioSource:
   m_ObjectHideFlags: 0
