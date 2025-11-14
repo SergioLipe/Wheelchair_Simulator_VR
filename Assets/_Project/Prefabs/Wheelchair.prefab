@@ -8459,8 +8459,8 @@ MonoBehaviour:
   mouseSensitivity: 2
   verticalLimitUp: 80
   verticalLimitDownFront: 80
-  verticalLimitDownBack: 20
-  horizontalLimit: 90
+  verticalLimitDownBack: 0
+  horizontalLimit: 125
   smoothMovement: 1
   smoothSpeed: 10
   rotationX: 0
